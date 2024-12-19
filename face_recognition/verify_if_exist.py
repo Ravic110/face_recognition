@@ -1,48 +1,52 @@
 import face_recognition
 import os
+import json
 import numpy as np
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
-from PIL import Image
-import cv2
+from config import ENCODED_DIR,META_FILE
 
-# Dossier pour stocker les visages encodés
-ENCODED_DIR = 'encodings'
+# Dossier partagé pour stocker les encodages et les métadonnées
+
 
 if not os.path.exists(ENCODED_DIR):
     os.makedirs(ENCODED_DIR)
 
+def load_metadata():
+    """
+    Charger les métadonnées existantes.
+    """
+    if os.path.exists(META_FILE):
+        with open(META_FILE, 'r') as file:
+            return json.load(file)
+    return {}
 
 def load_encoded_faces():
     """
-    Charger tous les visages encodés existants depuis le dossier ENCODED_DIR.
+    Charger tous les encodages de visages existants depuis les métadonnées.
     """
+    metadata = load_metadata()
     encoded_faces = {}
-    for file_name in os.listdir(ENCODED_DIR):
-        if file_name.endswith(".txt"):
-            name = file_name.split(".txt")[0]
-            with open(os.path.join(ENCODED_DIR, file_name), 'r') as file:
-                encoding = np.array(eval(file.read()))
-                encoded_faces[name] = encoding
-    return encoded_faces
 
+    for unique_id, data in metadata.items():
+        encoded_faces[data['name']] = np.array(data['encoding'])
+
+    return encoded_faces
 
 def face_exists(new_face_encoding, tolerance=0.6):
     """
-    Vérifier si le visage encodé existe déjà dans le dossier ENCODED_DIR.
+    Vérifier si un visage encodé existe déjà dans les métadonnées.
     """
     encoded_faces = load_encoded_faces()
 
     for name, encoding in encoded_faces.items():
-        # Comparer le nouvel encodage avec chaque encodage existant
         matches = face_recognition.compare_faces([encoding], new_face_encoding, tolerance=tolerance)
-        if matches[0]:  # Si le visage correspond
+        if matches[0]:
             print(f"Le visage correspond à {name}.")
             return True
 
     print("Aucune correspondance trouvée.")
     return False
-
 
 def encode_face_from_image(image_path):
     """
@@ -57,7 +61,6 @@ def encode_face_from_image(image_path):
     else:
         print("Aucun visage détecté dans l'image.")
         return None
-
 
 def import_and_check_face():
     """
@@ -76,7 +79,6 @@ def import_and_check_face():
     if new_face_encoding is not None:
         # Vérifier si le visage existe déjà
         face_exists(new_face_encoding)
-
 
 if __name__ == "__main__":
     import_and_check_face()
