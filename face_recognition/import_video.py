@@ -6,7 +6,6 @@ from datetime import datetime
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 from config import ENCODED_DIR,META_FILE
-import numpy as np
 
 # Dossier et fichier de métadonnées partagés
 

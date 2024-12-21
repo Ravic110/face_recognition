@@ -1,6 +1,5 @@
-import use_webCam, import_image, import_video
+import use_webCam, import_image, import_video, verify_if_exist
 
-import verify_if_exist
 
 def main():
     print("1. Capture depuis la webcam")
@@ -23,6 +22,7 @@ def main():
         verify_if_exist.import_and_check_face()
     else:
         print("Option invalide.")
+
 
 if __name__ == "__main__":
     main()
