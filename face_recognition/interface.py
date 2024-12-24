@@ -17,12 +17,37 @@ class FaceRecognitionApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Reconnaissance Faciale")
-        self.root.geometry("800x700")
+
+        # Définir une taille minimale
+        self.root.minsize(1024, 768)
+
+        # Obtenir les dimensions de l'écran
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+
+        # Calculer la taille optimale (80% de l'écran)
+        window_width = int(screen_width * 0.8)
+        window_height = int(screen_height * 0.8)
+
+        # Centrer la fenêtre
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # Permettre le redimensionnement
+        self.root.resizable(True, True)
+
+        # Configuration du grid pour qu'il s'adapte
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
         self.current_image = None
         self.current_image_tk = None
         self.face_locations = None
         self.face_encodings = None
         self.selected_face_index = None
+
         self.setup_ui()
 
     def verify_face(self, face_encoding):
@@ -55,45 +80,111 @@ class FaceRecognitionApp:
         return encoded_faces
 
     def setup_ui(self):
-        self.main_frame = ttk.Frame(self.root, padding="10")
-        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Frame principale avec poids pour l'expansion
+        self.main_frame = ttk.Frame(self.root, padding="20")
+        self.main_frame.grid(row=0, column=0, sticky="nsew")
+        self.main_frame.grid_rowconfigure(1, weight=1)  # Ligne du canvas
+        self.main_frame.grid_columnconfigure(0, weight=1)
 
-        self.load_button = ttk.Button(self.main_frame, text="Charger une image", command=self.load_image)
-        self.load_button.grid(row=0, column=0, pady=5)
+        # Zone des boutons en haut
+        self.button_frame = ttk.Frame(self.main_frame)
+        self.button_frame.grid(row=0, column=0, pady=(0, 10), sticky="ew")
 
-        self.canvas = tk.Canvas(self.main_frame, width=600, height=400, bg='gray85')
-        self.canvas.grid(row=1, column=0, pady=10)
+        self.load_button = ttk.Button(
+            self.button_frame,
+            text="Charger une image",
+            command=self.load_image,
+            width=20
+        )
+        self.load_button.pack(side="left", padx=5)
 
-        self.info_frame = ttk.LabelFrame(self.main_frame, text="Informations", padding="5")
-        self.info_frame.grid(row=2, column=0, pady=5, sticky="ew")
-        self.info_label = ttk.Label(self.info_frame, text="Aucune image chargée")
+        # Canvas redimensionnable
+        self.canvas = tk.Canvas(
+            self.main_frame,
+            bg='gray85',
+            width=800,
+            height=600
+        )
+        self.canvas.grid(row=1, column=0, sticky="nsew", pady=10)
+
+        # Frame d'information
+        self.info_frame = ttk.LabelFrame(
+            self.main_frame,
+            text="Informations",
+            padding="10"
+        )
+        self.info_frame.grid(row=2, column=0, sticky="ew", pady=(10, 5))
+
+        self.info_label = ttk.Label(
+            self.info_frame,
+            text="Aucune image chargée"
+        )
         self.info_label.grid(row=0, column=0, sticky="w")
 
-        self.selection_frame = ttk.LabelFrame(self.main_frame, text="Sélection du visage", padding="5")
-        self.selection_frame.grid(row=3, column=0, pady=5, sticky="ew")
+        # Frame de sélection et d'enregistrement côte à côte
+        self.control_frame = ttk.Frame(self.main_frame)
+        self.control_frame.grid(row=3, column=0, sticky="ew", pady=5)
+        self.control_frame.grid_columnconfigure(0, weight=1)
+        self.control_frame.grid_columnconfigure(1, weight=1)
+
+        # Frame de sélection (à gauche)
+        self.selection_frame = ttk.LabelFrame(
+            self.control_frame,
+            text="Sélection du visage",
+            padding="10"
+        )
+        self.selection_frame.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+
         self.face_var = tk.StringVar(value="")
-        self.face_entry = ttk.Entry(self.selection_frame, textvariable=self.face_var, state="disabled")
-        self.face_entry.grid(row=0, column=0, padx=5)
-        self.select_button = ttk.Button(self.selection_frame, text="Sélectionner ce visage",
-                                        command=self.select_face, state="disabled")
-        self.select_button.grid(row=0, column=1, padx=5)
+        self.face_entry = ttk.Entry(
+            self.selection_frame,
+            textvariable=self.face_var,
+            state="disabled"
+        )
+        self.face_entry.pack(side="left", padx=5)
 
-        self.name_frame = ttk.LabelFrame(self.main_frame, text="Enregistrement", padding="5")
-        self.name_frame.grid(row=4, column=0, pady=5, sticky="ew")
-        ttk.Label(self.name_frame, text="Nom:").grid(row=0, column=0, padx=5)
+        self.select_button = ttk.Button(
+            self.selection_frame,
+            text="Sélectionner ce visage",
+            command=self.select_face,
+            state="disabled"
+        )
+        self.select_button.pack(side="left", padx=5)
+
+        # Frame d'enregistrement (à droite)
+        self.name_frame = ttk.LabelFrame(
+            self.control_frame,
+            text="Enregistrement",
+            padding="10"
+        )
+        self.name_frame.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+
+        ttk.Label(self.name_frame, text="Nom:").pack(side="left", padx=5)
         self.name_entry = ttk.Entry(self.name_frame)
-        self.name_entry.grid(row=0, column=1, padx=5)
-        self.save_button = ttk.Button(self.name_frame, text="Enregistrer",
-                                      command=self.save_face, state="disabled")
-        self.save_button.grid(row=0, column=2, padx=5)
+        self.name_entry.pack(side="left", padx=5)
 
-        self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
-        self.progress.grid(row=5, column=0, sticky="ew", pady=5)
+        self.save_button = ttk.Button(
+            self.name_frame,
+            text="Enregistrer",
+            command=self.save_face,
+            state="disabled"
+        )
+        self.save_button.pack(side="left", padx=5)
+
+        # Barre de progression
+        self.progress = ttk.Progressbar(
+            self.main_frame,
+            mode='indeterminate'
+        )
+        self.progress.grid(row=4, column=0, sticky="ew", pady=10)
 
     def load_image(self):
         try:
-            image_path = askopenfilename(title="Sélectionnez une image",
-                                         filetypes=[("Images", "*.jpg;*.jpeg;*.png")])
+            image_path = askopenfilename(
+                title="Sélectionnez une image",
+                filetypes=[("Images", "*.jpg;*.jpeg;*.png")]
+            )
+
             if not image_path:
                 return
 
@@ -111,7 +202,10 @@ class FaceRecognitionApp:
     def process_image(self):
         try:
             image_resized = import_image.resize_image_to_fit_screen(
-                self.current_image, max_width=600, max_height=400)
+                self.current_image,
+                max_width=self.canvas.winfo_width(),
+                max_height=self.canvas.winfo_height()
+            )
 
             self.face_locations = face_recognition.face_locations(image_resized)
             self.face_encodings = face_recognition.face_encodings(image_resized, self.face_locations)
@@ -139,9 +233,20 @@ class FaceRecognitionApp:
             self.root.after(0, self.progress.stop)
 
     def update_display(self, image):
+        # Obtenir les dimensions du canvas
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        # Créer l'image Tkinter
         self.current_image_tk = ImageTk.PhotoImage(Image.fromarray(image))
+
+        # Calculer les coordonnées pour centrer l'image
+        x = canvas_width // 2
+        y = canvas_height // 2
+
+        # Effacer le canvas et afficher l'image centrée
         self.canvas.delete("all")
-        self.canvas.create_image(300, 200, anchor=tk.CENTER, image=self.current_image_tk)
+        self.canvas.create_image(x, y, anchor=tk.CENTER, image=self.current_image_tk)
 
         if self.face_locations:
             self.info_label.config(text=f"{len(self.face_locations)} visage(s) détecté(s)")
