@@ -1,121 +1,107 @@
+from dataclasses import dataclass
+from typing import List, Dict, Tuple, Optional
+import numpy as np
 import cv2
 import face_recognition
-import os
-import json
-from datetime import datetime
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
-from config import ENCODED_DIR,META_FILE
+import logging
+from collections import defaultdict
 
-# Dossier et fichier de métadonnées partagés
 
-if not os.path.exists(ENCODED_DIR):
-    os.makedirs(ENCODED_DIR)
+@dataclass
+class DetectedFace:
+    frame_number: int
+    location: Tuple[int, int, int, int]
+    encoding: np.ndarray
+    quality: float
+    image: np.ndarray
 
-def save_face_encoding(name, face_encoding):
-    """
-    Enregistrer l'encodage du visage détecté dans un fichier et mettre à jour les métadonnées.
-    """
-    # Génération d'un identifiant unique
-    timestamp = datetime.now().isoformat()
-    unique_id = f"{hash(name + timestamp) & 0xFFFFFFFF:08x}"
 
-    # Structure des données
-    encoding_data = {
-        'name': name,
-        'encoding': face_encoding.tolist(),
-        'timestamp': timestamp
-    }
+class FaceCollector:
+    def __init__(self):
+        self.detected_faces: List[DetectedFace] = []
+        self.selected_faces: Dict[str, List[DetectedFace]] = defaultdict(list)
 
-    # Sauvegarder l'encodage
-    file_path = os.path.join(ENCODED_DIR, f"{unique_id}.json")
-    with open(file_path, 'w') as file:
-        json.dump(encoding_data, file)
-
-    # Mise à jour des métadonnées
-    update_metadata(unique_id, name)
-    print(f"Encodage pour {name} sauvegardé avec succès.")
-
-def update_metadata(unique_id, name):
-    """
-    Mettre à jour le fichier de métadonnées avec les nouvelles informations.
-    """
-    metadata = {}
-    if os.path.exists(META_FILE):
-        with open(META_FILE, 'r') as file:
-            metadata = json.load(file)
-
-    metadata[unique_id] = {
-        'name': name,
-        'date_creation': datetime.now().isoformat()
-    }
-
-    with open(META_FILE, 'w') as file:
-        json.dump(metadata, file, indent=4)
-
-def process_video(video_path, name):
-    """
-    Analyser la vidéo pour détecter les visages dans chaque frame et enregistrer les encodages.
-    """
-    cap = cv2.VideoCapture(video_path)
-
-    if not cap.isOpened():
-        print("Erreur lors de l'ouverture de la vidéo.")
-        return
-
-    frame_count = 0
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        frame_count += 1
-
-        # Processer une image sur 10 pour éviter les doublons inutiles
-        if frame_count % 10 != 0:
-            continue
-
-        # Conversion de l'image en format RGB pour face_recognition
+    def collect_faces(self, frame: np.ndarray, frame_number: int) -> List[Tuple[int, int, int, int]]:
+        """Détecte et collecte les visages d'une frame"""
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Détection des visages
         face_locations = face_recognition.face_locations(rgb_frame)
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-        # Dessiner des rectangles autour des visages détectés
-        for (top, right, bottom, left) in face_locations:
-            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+        for location, encoding in zip(face_locations, face_encodings):
+            top, right, bottom, left = location
+            face_img = frame[top:bottom, left:right]
+            quality = self._assess_quality(face_img)
 
-        # Sauvegarder les encodages des visages détectés
-        for face_encoding in face_encodings:
-            save_face_encoding(name, face_encoding)
+            if quality > 0.15:  # Seuil de qualité minimum
+                self.detected_faces.append(DetectedFace(
+                    frame_number=frame_number,
+                    location=location,
+                    encoding=encoding,
+                    quality=quality,
+                    image=face_img.copy()
+                ))
 
-        # Afficher le résultat
-        cv2.imshow("Détection de visages", frame)
+        return face_locations
 
-        # Quitter la boucle si la touche 'q' est appuyée
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    def _assess_quality(self, face_img: np.ndarray) -> float:
+        """Évalue la qualité de l'image du visage"""
+        gray = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+        hist_norm = hist.ravel() / hist.sum()
+        contrast_score = np.std(hist_norm) * 100
+        return (blur_score * 0.7 + contrast_score * 0.3) / 100
 
-    cap.release()
-    cv2.destroyAllWindows()
+    def assign_face_to_person(self, face_idx: int, person_name: str):
+        """Assigne un visage détecté à une personne"""
+        if 0 <= face_idx < len(self.detected_faces):
+            face = self.detected_faces[face_idx]
+            self.selected_faces[person_name].append(face)
 
-def import_video():
-    """
-    Ouvrir une boîte de dialogue pour sélectionner une vidéo et traiter les visages détectés.
-    """
-    Tk().withdraw()  # Masquer la fenêtre Tkinter par défaut
-    video_path = askopenfilename(title="Sélectionnez une vidéo", filetypes=[("Vidéos", "*.mp4;*.avi;*.mkv")])
+    def get_best_faces_for_person(self, person_name: str, max_faces: int = 5) -> List[np.ndarray]:
+        """Retourne les meilleurs encodages pour une personne"""
+        if person_name not in self.selected_faces:
+            return []
 
-    if not video_path:
-        print("Aucune vidéo sélectionnée.")
-        return
+        faces = self.selected_faces[person_name]
+        # Trier par qualité
+        faces.sort(key=lambda x: x.quality, reverse=True)
+        return [face.encoding for face in faces[:max_faces]]
 
-    name = input("Entrez le nom de la personne : ")
+    def clear_collections(self):
+        """Vide les collections de visages"""
+        self.detected_faces.clear()
+        self.selected_faces.clear()
 
-    # Traiter la vidéo pour la détection et l'encodage des visages
-    process_video(video_path, name)
 
-if __name__ == "__main__":
-    print("Détection de visages dans une vidéo")
-    import_video()
+def process_video_with_selection(video_path: str, collector: FaceCollector,
+                                 progress_callback=None, frame_callback=None):
+    """Traite la vidéo et collecte les visages pour sélection"""
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError("Impossible d'ouvrir la vidéo")
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_count = 0
+
+    try:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame_count += 1
+            if frame_count % 10 == 0:  # Traiter une frame sur 10
+                face_locations = collector.collect_faces(frame, frame_count)
+
+                if frame_callback:
+                    frame_callback(frame, face_locations)
+
+                if progress_callback:
+                    progress = (frame_count / total_frames) * 100
+                    progress_callback(progress)
+
+    finally:
+        cap.release()
+
+    return collector.detected_faces
