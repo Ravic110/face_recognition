@@ -13,6 +13,17 @@ from config import ENCODED_DIR, META_FILE
 import import_image
 
 
+def draw_bold_text(image, text, position, font, font_scale, color, thickness):
+    # Dessiner le texte plusieurs fois avec un décalage pour simuler le gras
+    x, y = position
+    cv2.putText(image, text, (x - 1, y), font, font_scale, color, thickness)
+    cv2.putText(image, text, (x + 1, y), font, font_scale, color, thickness)
+    cv2.putText(image, text, (x, y - 1), font, font_scale, color, thickness)
+    cv2.putText(image, text, (x, y + 1), font, font_scale, color, thickness)
+    # Dessiner le texte principal par-dessus
+    cv2.putText(image, text, (x, y), font, font_scale, color, thickness + 1)
+
+
 class FaceRecognitionApp:
     def __init__(self, root):
         self.root = root
@@ -136,12 +147,13 @@ class FaceRecognitionApp:
         self.selection_frame.grid(row=0, column=0, sticky="ew", padx=(0, 5))
 
         self.face_var = tk.StringVar(value="")
-        self.face_entry = ttk.Entry(
+        self.face_selector = ttk.Combobox(
             self.selection_frame,
             textvariable=self.face_var,
-            state="disabled"
+            state="readonly",
+            values=[]  # Initialement vide, mis à jour après détection
         )
-        self.face_entry.pack(side="left", padx=5)
+        self.face_selector.pack(side="left", padx=5)
 
         self.select_button = ttk.Button(
             self.selection_frame,
@@ -217,13 +229,17 @@ class FaceRecognitionApp:
                 if exists:
                     # Visage connu - Rouge avec nom
                     cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 0, 255), 2)
-                    cv2.putText(image_resized, f"{known_name}", (left, top - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                    draw_bold_text(
+                        image_resized, f"{known_name}", (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1
+                    )
                 else:
                     # Nouveau visage - Vert
                     cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 255, 0), 2)
-                    cv2.putText(image_resized, f"Nouveau {i + 1}", (left, top - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                    draw_bold_text(
+                        image_resized, f"inconnu {i + 1}", (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                    )
 
             self.root.after(0, self.update_display, image_resized)
 
@@ -250,17 +266,29 @@ class FaceRecognitionApp:
 
         if self.face_locations:
             self.info_label.config(text=f"{len(self.face_locations)} visage(s) détecté(s)")
-            self.face_entry.config(state="normal")
+            self.face_selector.config(state="readonly")
+            # Met à jour les options du menu déroulant avec les indices des visages
+            self.face_selector["values"] = [f"Visage {i + 1}" for i in range(len(self.face_locations))]
+
+            self.face_var.set("")  # Réinitialise la sélection
             self.select_button.config(state="normal")
-            self.face_var.set("")
         else:
             self.info_label.config(text="Aucun visage détecté")
+            self.face_selector.config(state="disabled")
+            self.face_var.set("")
+            self.select_button.config(state="disabled")
 
     def select_face(self):
         try:
-            face_num = int(self.face_var.get())
-            if 1 <= face_num <= len(self.face_locations):
-                self.selected_face_index = face_num - 1
+            face_label = self.face_var.get()  # Récupère la sélection comme "Visage X"
+            if not face_label.startswith("Visage "):
+                messagebox.showwarning("Attention", "Sélection invalide")
+                return
+
+            face_index = int(face_label.split(" ")[1]) - 1  # Extraire le numéro après "Visage"
+
+            if 0 <= face_index < len(self.face_locations):
+                self.selected_face_index = face_index
                 exists, _ = self.verify_face(self.face_encodings[self.selected_face_index])
 
                 if exists:
@@ -270,9 +298,9 @@ class FaceRecognitionApp:
                 self.save_button.config(state="normal")
                 self.name_entry.focus()
             else:
-                messagebox.showwarning("Attention", "Numéro de visage invalide")
+                messagebox.showwarning("Attention", "Sélection invalide")
         except ValueError:
-            messagebox.showwarning("Attention", "Veuillez entrer un numéro de visage valide")
+            messagebox.showwarning("Attention", "Sélection invalide")
 
     def save_face(self):
         if self.selected_face_index is None:
@@ -283,14 +311,42 @@ class FaceRecognitionApp:
             messagebox.showwarning("Attention", "Veuillez entrer un nom")
             return
 
+        if name in self.load_all_encodings():
+            messagebox.showwarning("Attention", f"Le nom '{name}' existe déjà. Veuillez choisir un autre nom.")
+            return
+
         try:
             import_image.save_face_encoding(name, self.face_encodings[self.selected_face_index])
             messagebox.showinfo("Succès", f"Visage de {name} enregistré avec succès")
+
+            # Actualise la liste et l'affichage
+            self.update_faces_after_save()
+
+            # Réinitialise le champ de nom
             self.name_entry.delete(0, tk.END)
-            self.face_var.set("")
-            self.save_button.config(state="disabled")
         except Exception as e:
             messagebox.showerror("Erreur", str(e))
+
+    def update_faces_after_save(self):
+        # Supprime le visage enregistré des listes
+        if self.selected_face_index is not None:
+            del self.face_locations[self.selected_face_index]
+            del self.face_encodings[self.selected_face_index]
+
+        # Réinitialise la sélection
+        self.selected_face_index = None
+        self.face_var.set("")
+        self.save_button.config(state="disabled")
+
+        # Actualise les options du menu déroulant
+        if self.face_locations:
+            self.face_selector["values"] = [f"Visage {i + 1}" for i in range(len(self.face_locations))]
+        else:
+            self.face_selector["values"] = []
+            self.face_selector.config(state="disabled")
+
+        # Actualise l'image affichée pour refléter les changements
+        self.process_image()
 
 
 def main():
