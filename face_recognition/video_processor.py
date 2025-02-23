@@ -1,7 +1,6 @@
 import os
 import cv2
 import face_recognition
-from utils import save_face_encoding, load_existing_encodings, is_duplicate
 
 def process_video(video_path, tolerance=0.5, frame_skip=30):
     if not os.path.exists(video_path):
@@ -38,4 +37,3 @@ def process_video(video_path, tolerance=0.5, frame_skip=30):
 
     cap.release()
     print("Traitement vidéo terminé.")
-

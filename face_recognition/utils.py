@@ -8,10 +8,23 @@ def load_existing_encodings():
     encodings = []
     if os.path.exists(ENCODED_DIR):
         for filename in os.listdir(ENCODED_DIR):
+            # Ignorer le fichier metadata.json
+            if filename == "metadata.json":
+                continue
+
             if filename.endswith(".json"):
-                with open(os.path.join(ENCODED_DIR, filename), 'r') as f:
-                    data = json.load(f)
-                    encodings.append({'name': data['name'], 'encoding': data['encoding']})
+                try:
+                    with open(os.path.join(ENCODED_DIR, filename), 'r') as f:
+                        data = json.load(f)
+                        # Vérifier que les clés 'name' et 'encoding' existent
+                        if 'name' in data and 'encoding' in data:
+                            encodings.append({'name': data['name'], 'encoding': data['encoding']})
+                        else:
+                            print(f"Avertissement : Le fichier {filename} est mal formaté et sera ignoré.")
+                except json.JSONDecodeError:
+                    print(f"Avertissement : Le fichier {filename} n'est pas un JSON valide et sera ignoré.")
+                except Exception as e:
+                    print(f"Avertissement : Erreur lors de la lecture du fichier {filename} : {e}")
     return encodings
 
 def is_duplicate(encoding, existing_encodings, tolerance=0.5):
