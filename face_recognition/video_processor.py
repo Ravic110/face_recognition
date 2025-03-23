@@ -1,39 +1,50 @@
-import os
 import cv2
 import face_recognition
+import os
+import json
+import uuid
+from config import ENCODED_DIR
 
-def process_video(video_path, tolerance=0.5, frame_skip=30):
-    if not os.path.exists(video_path):
-        raise FileNotFoundError(f"La vidéo {video_path} n'existe pas.")
 
+def process_chunk(args):
+    video_path, start_frame, end_frame, chunk_id, frame_skip = args  # Ajout de frame_skip
     cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise IOError("Impossible d'ouvrir la vidéo.")
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
-    print(f"Traitement de la vidéo : {video_path}")
+    temp_dir = os.path.join(ENCODED_DIR, 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    output_file = os.path.join(temp_dir, f'chunk_{chunk_id}.json')
+    results = []
 
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    processed_frames = 0
-
-    while True:
+    frame_count = start_frame
+    while frame_count <= end_frame:
         ret, frame = cap.read()
         if not ret:
             break
 
-        processed_frames += 1
-        if processed_frames % frame_skip != 0:
-            continue
+        # Ne traiter que si frame_count est un multiple de frame_skip
+        if frame_count % frame_skip == 0:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            face_locations = face_recognition.face_locations(rgb_frame)
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_locations = face_recognition.face_locations(rgb_frame)
-        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+            for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
+                try:
+                    face_image = frame[top:bottom, left:right]
+                    _, buffer = cv2.imencode('.jpg', face_image)
 
-        faces = []
-        for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-            face_image = frame[top:bottom, left:right]
-            faces.append((face_image, face_encoding))
+                    results.append({
+                        'id': f"temp_{uuid.uuid4().hex}",
+                        'encoding': encoding.tolist(),
+                        'image': buffer.tobytes().hex()  # Sérialisation hexadécimale
+                    })
+                except Exception as e:
+                    continue
 
-        yield faces  # Retourne tous les visages de la frame comme une liste
+        frame_count += 1
+
+    with open(output_file, 'w') as f:
+        json.dump(results, f)
 
     cap.release()
-    print("Traitement vidéo terminé.")
+    return output_file

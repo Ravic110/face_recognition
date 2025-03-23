@@ -1,67 +1,105 @@
 import os
 import json
-import hashlib
+import cv2, base64
+import numpy as np
 from datetime import datetime
+from face_recognition import compare_faces, face_distance
 from config import ENCODED_DIR, META_FILE
+
 
 def load_existing_encodings():
     encodings = []
-    if os.path.exists(ENCODED_DIR):
-        for filename in os.listdir(ENCODED_DIR):
-            # Ignorer le fichier metadata.json
-            if filename == "metadata.json":
-                continue
+    if not os.path.exists(ENCODED_DIR):
+        return encodings
 
-            if filename.endswith(".json"):
-                try:
-                    with open(os.path.join(ENCODED_DIR, filename), 'r') as f:
-                        data = json.load(f)
-                        # Vérifier que les clés 'name' et 'encoding' existent
-                        if 'name' in data and 'encoding' in data:
-                            encodings.append({'name': data['name'], 'encoding': data['encoding']})
-                        else:
-                            print(f"Avertissement : Le fichier {filename} est mal formaté et sera ignoré.")
-                except json.JSONDecodeError:
-                    print(f"Avertissement : Le fichier {filename} n'est pas un JSON valide et sera ignoré.")
-                except Exception as e:
-                    print(f"Avertissement : Erreur lors de la lecture du fichier {filename} : {e}")
+    for filename in os.listdir(ENCODED_DIR):
+        filepath = os.path.join(ENCODED_DIR, filename)
+        try:
+            if filename.endswith(".json") and 'temp' not in filename:
+                with open(filepath, 'r') as f:
+                    data = json.load(f)
+                    if validate_encoding(data):
+                        encodings.append({
+                            'name': data['name'],
+                            'encoding': np.array(data['encoding'])
+                        })
+                    else:
+                        os.remove(filepath)
+        except Exception as e:
+            os.remove(filepath)
     return encodings
 
-def is_duplicate(encoding, existing_encodings, tolerance=0.5):
-    from face_recognition import compare_faces
-    known_encodings = [entry['encoding'] for entry in existing_encodings]
-    results = compare_faces(known_encodings, encoding, tolerance)
-    if True in results:
-        index = results.index(True)
-        return existing_encodings[index]['name']
-    return None
 
-def save_face_encoding(name, face_encoding):
+def save_face_encoding(name, encoding, image):
     timestamp = datetime.now().isoformat()
-    unique_id = hashlib.sha256(f"{name}{timestamp}".encode()).hexdigest()[:12]
+    unique_id = f"{name}_{timestamp}".encode('utf-8').hex()[:12]
 
-    encoding_data = {
+    # Conversion de l'image
+    _, buffer = cv2.imencode('.jpg', image)
+    image_base64 = base64.b64encode(buffer).decode('utf-8')
+
+    data = {
         'name': name,
-        'encoding': face_encoding.tolist(),
+        'encoding': encoding.tolist(),
+        'image':  image_base64,
         'timestamp': timestamp
     }
 
-    file_path = os.path.join(ENCODED_DIR, f"{unique_id}.json")
-    with open(file_path, 'w') as file:
-        json.dump(encoding_data, file, indent=4)
+    os.makedirs(ENCODED_DIR, exist_ok=True)
+    with open(os.path.join(ENCODED_DIR, f"{unique_id}.json"), 'w') as f:
+        json.dump(data, f, indent=4)
 
     update_metadata(unique_id, name)
 
-def update_metadata(unique_id, name):
+
+def is_duplicate(encoding, existing_encodings, tolerance=0.6):
+    # Première passe rapide
+    encodings_list = [e['encoding'] for e in existing_encodings]
+    matches = compare_faces(encodings_list, encoding, tolerance + 0.1)
+
+    # Deuxième passe précise
+    for i, match in enumerate(matches):
+        if match:
+            distance = face_distance([existing_encodings[i]['encoding']], encoding)[0]
+            if distance < tolerance:
+                return existing_encodings[i]['name']
+    return None
+
+
+def validate_encoding(data):
+    required = ['name', 'encoding', 'timestamp']
+    return all(key in data for key in required) and len(data['encoding']) == 128
+
+
+def update_metadata(uid, name):
     metadata = {}
     if os.path.exists(META_FILE):
         with open(META_FILE, 'r') as f:
             metadata = json.load(f)
 
-    metadata[unique_id] = {
+    metadata[uid] = {
         'name': name,
-        'date_creation': datetime.now().isoformat()
+        'date': datetime.now().isoformat()
     }
 
     with open(META_FILE, 'w') as f:
         json.dump(metadata, f, indent=4)
+
+
+def delete_encoding(name):
+    print(f"Tentative de suppression de l'encoding : {name}")
+    for filename in os.listdir(ENCODED_DIR):
+        if filename.endswith(".json") and name in filename:
+            filepath = os.path.join(ENCODED_DIR, filename)
+            print(f"Suppression du fichier : {filepath}")
+            os.remove(filepath)
+
+    if os.path.exists(META_FILE):
+        with open(META_FILE, 'r') as f:
+            metadata = json.load(f)
+
+        metadata = {k: v for k, v in metadata.items() if v['name'] != name}
+
+        with open(META_FILE, 'w') as f:
+            json.dump(metadata, f)
+        print(f"Metadata mise à jour pour supprimer : {name}")
