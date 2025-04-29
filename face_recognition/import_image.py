@@ -214,5 +214,6 @@ def calculate_text_scale(image_shape, base_width=800):
     return max(scale_factor, 0.5)
 
 
+
 if __name__ == "__main__":
     import_face_from_image()

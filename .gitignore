@@ -1,3 +1,5 @@
 encodings
-video_processing.log
 *.log
+*.json
+__pycache__
+*.pyc

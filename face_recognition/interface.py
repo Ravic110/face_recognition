@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 import cv2
 from PIL import Image, ImageTk
 import numpy as np
@@ -28,6 +28,10 @@ class FaceRecognitionApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Reconnaissance Faciale")
+
+        self.cap = None  # Pour l'objet vidéo OpenCV
+        self.running = False  # Flag pour arrêter la capture
+        self.new_faces = []  # Stocker encodages de nouveaux visages capturés
 
         # Définir une taille minimale
         self.root.minsize(1024, 768)
@@ -108,6 +112,40 @@ class FaceRecognitionApp:
             width=20
         )
         self.load_button.pack(side="left", padx=5)
+
+        self.start_camera_button = ttk.Button(
+            self.button_frame,
+            text="Démarrer la caméra",
+            command=self.start_camera,
+            width=20
+        )
+        self.start_camera_button.pack(side="left", padx=5)
+
+        self.capture_button = ttk.Button(
+            self.button_frame,
+            text="Capturer",
+            command=self.capture_faces,
+            width=20,
+            state="disabled"
+        )
+        self.capture_button.pack(side="left", padx=5)
+
+        self.stop_camera_button = ttk.Button(
+            self.button_frame,
+            text="Arrêter la caméra",
+            command=self.stop_camera,
+            width=20,
+            state="disabled"
+        )
+        self.stop_camera_button.pack(side="left", padx=5)
+
+        self.manage_encodings_button = ttk.Button(
+            self.button_frame,
+            text="Gérer les encodages",
+            command=self.open_manage_window,
+            width=20
+        )
+        self.manage_encodings_button.pack(side="left", padx=5)
 
         # Canvas redimensionnable
         self.canvas = tk.Canvas(
@@ -347,6 +385,171 @@ class FaceRecognitionApp:
 
         # Actualise l'image affichée pour refléter les changements
         self.process_image()
+
+    def start_camera(self):
+        try:
+            self.cap = cv2.VideoCapture(0)
+            if not self.cap.isOpened():
+                raise Exception("Impossible d'ouvrir la caméra")
+
+            self.running = True
+            self.capture_button.config(state="normal")
+            self.update_frame()
+            self.stop_camera_button.config(state="normal")
+
+        except Exception as e:
+            messagebox.showerror("Erreur", str(e))
+
+    def update_frame(self):
+        if not self.running:
+            return
+
+        ret, frame = self.cap.read()
+        if not ret:
+            return
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+
+        face_locations = face_recognition.face_locations(small_frame)
+        face_encodings = face_recognition.face_encodings(small_frame, face_locations)
+
+        for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
+            exists, known_name = self.verify_face(encoding)
+            color = (0, 0, 255) if exists else (0, 255, 0)
+            label = known_name if exists else "inconnu"
+
+            # Agrandir les coordonnées
+            top *= 2
+            right *= 2
+            bottom *= 2
+            left *= 2
+
+            cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+            draw_bold_text(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
+            if not exists:
+                self.new_faces.append((encoding, frame[top:bottom, left:right]))
+
+        # Affiche dans canvas
+        img = Image.fromarray(frame)
+        imgtk = ImageTk.PhotoImage(image=img)
+        self.current_image_tk = imgtk
+        self.canvas.create_image(self.canvas.winfo_width() // 2, self.canvas.winfo_height() // 2, anchor=tk.CENTER,
+                                 image=imgtk)
+
+        self.root.after(30, self.update_frame)  # 30 ms => ~30 fps
+
+
+    def capture_faces(self):
+        if not self.new_faces:
+            messagebox.showinfo("Info", "Aucun nouveau visage à capturer")
+            return
+
+        # Demander le nom pour chaque visage capturé
+        for i, (encoding, face_crop) in enumerate(self.new_faces):
+            name = simpledialog.askstring("Nom du visage", f"Entrez le nom pour le visage {i+1}:")
+
+            if name:
+                import_image.save_face_encoding(name, encoding)
+                messagebox.showinfo("Succès", f"Visage '{name}' enregistré")
+
+        # Nettoyer la liste après enregistrement
+        self.new_faces.clear()
+
+    def stop_camera(self):
+        self.running = False
+        if self.cap and self.cap.isOpened():
+            self.cap.release()
+            self.cap = None
+
+        self.capture_button.config(state="disabled")
+        self.stop_camera_button.config(state="disabled")
+        self.start_camera_button.config(state="normal")
+
+        # Nettoyage de l'image du canvas (optionnel)
+        self.canvas.delete("all")
+
+    def open_manage_window(self):
+        manage_win = tk.Toplevel(self.root)
+        manage_win.title("Gestion des visages encodés")
+        manage_win.geometry("600x400")
+        manage_win.transient(self.root)
+        manage_win.grab_set()
+
+        ttk.Label(manage_win, text="Visages enregistrés :", font=("Arial", 12)).pack(pady=10)
+
+        listbox = tk.Listbox(manage_win)
+        listbox.pack(fill="both", expand=True, padx=20)
+
+        # On charge les encodages depuis metadata.json
+        try:
+            encodings = self.load_all_encodings()  # Ne pas modifier cette fonction
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur de chargement des encodages : {e}")
+            return
+
+        for name in sorted(encodings.keys()):
+            listbox.insert(tk.END, name)
+
+
+        def delete_selected():
+            selected = listbox.curselection()
+            if not selected:
+                messagebox.showwarning("Attention", "Sélectionnez un visage à supprimer.")
+                return
+
+            name = listbox.get(selected[0])
+
+            # Charger les données du fichier metadata.json
+            try:
+                with open(META_FILE, "r") as f:
+                    data = json.load(f)
+
+                # Trouver la clé correspondant au nom sélectionné
+                key_to_delete = None
+                for key, value in data.items():
+                    if value["name"] == name:
+                        key_to_delete = key
+                        break
+
+                if key_to_delete:
+                    # Supprimer le fichier associé au hash
+                    encoding_file = os.path.join(ENCODED_DIR, f"{key_to_delete}.json")
+                    if os.path.exists(encoding_file):
+                        os.remove(encoding_file)
+
+                    # Supprimer l'entrée de metadata
+                    del data[key_to_delete]
+
+                    # Sauvegarder les modifications
+                    with open(META_FILE, "w") as f:
+                        json.dump(data, f, indent=4)
+
+                    # Supprimer de la listbox
+                    listbox.delete(selected[0])
+
+
+
+                    messagebox.showinfo("Supprimé", f"'{name}' et son fichier d'encodage ont été supprimés.")
+                    # Actualise la liste et l'affichage
+                    self.refresh_encoding_list(listbox)
+                else:
+                    messagebox.showerror("Erreur", f"Le nom '{name}' n'existe pas dans metadata.json.")
+
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Une erreur est survenue lors de la suppression : {e}")
+
+        ttk.Button(manage_win, text="Supprimer", command=delete_selected).pack(pady=10)
+
+    def refresh_encoding_list(self, listbox):
+        listbox.delete(0, tk.END)
+        try:
+            encodings = self.load_all_encodings()
+            for name in sorted(encodings.keys()):
+                listbox.insert(tk.END, name)
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur de rechargement : {e}")
 
 
 def main():
