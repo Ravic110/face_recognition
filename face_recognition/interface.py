@@ -11,6 +11,7 @@ from tkinter.filedialog import askopenfilename
 from threading import Thread
 from config import ENCODED_DIR, META_FILE
 import import_image
+from playsound import playsound  # Importer le module pour jouer un son
 
 
 def draw_bold_text(image, text, position, font, font_scale, color, thickness):
@@ -32,6 +33,7 @@ class FaceRecognitionApp:
         self.cap = None  # Pour l'objet vidéo OpenCV
         self.running = False  # Flag pour arrêter la capture
         self.new_faces = []  # Stocker encodages de nouveaux visages capturés
+        self.target_person = None  # Nom de la personne à traquer
 
         # Définir une taille minimale
         self.root.minsize(1024, 768)
@@ -62,23 +64,23 @@ class FaceRecognitionApp:
         self.face_locations = None
         self.face_encodings = None
         self.selected_face_index = None
+        self.is_capturing = False  # Flag pour éviter les boucles infinies
 
         self.setup_ui()
 
-    def verify_face(self, face_encoding):
+    def verify_face(self, face_encoding, threshold=0.5):
         """
-        Vérifier si le visage existe avec une meilleure précision
+        Vérifier si le visage existe avec une meilleure précision.
+        :param face_encoding: L'encodage du visage à vérifier.
+        :param threshold: Le seuil de distance pour considérer un visage comme correspondant.
         """
         encoded_faces = self.load_all_encodings()
         best_match = None
         min_distance = float('inf')
 
         for name, known_encoding in encoded_faces.items():
-            # Calculer la distance entre les encodages
             face_distance = face_recognition.face_distance([known_encoding], face_encoding)[0]
-
-            # Si la distance est inférieure au seuil et c'est la plus petite trouvée
-            if face_distance < 0.5 and face_distance < min_distance:
+            if face_distance < threshold and face_distance < min_distance:
                 min_distance = face_distance
                 best_match = name
 
@@ -220,6 +222,31 @@ class FaceRecognitionApp:
             state="disabled"
         )
         self.save_button.pack(side="left", padx=5)
+
+        # Frame pour la fonctionnalité "alerté"
+        self.alert_frame = ttk.LabelFrame(
+            self.main_frame,
+            text="Alertes",
+            padding="10"
+        )
+        self.alert_frame.grid(row=5, column=0, sticky="ew", pady=10)
+
+        ttk.Label(self.alert_frame, text="Personne à traquer :").pack(side="left", padx=5)
+        self.target_var = tk.StringVar(value="")
+        self.target_selector = ttk.Combobox(
+            self.alert_frame,
+            textvariable=self.target_var,
+            state="readonly",
+            values=[]  # Initialement vide, mis à jour après chargement des encodages
+        )
+        self.target_selector.pack(side="left", padx=5)
+
+        self.set_target_button = ttk.Button(
+            self.alert_frame,
+            text="Définir comme cible",
+            command=self.set_target_person
+        )
+        self.set_target_button.pack(side="left", padx=5)
 
         # Barre de progression
         self.progress = ttk.Progressbar(
@@ -406,6 +433,7 @@ class FaceRecognitionApp:
 
         ret, frame = self.cap.read()
         if not ret:
+            print("Erreur : Impossible de lire la trame de la caméra.")
             return
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -416,20 +444,43 @@ class FaceRecognitionApp:
 
         for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
             exists, known_name = self.verify_face(encoding)
-            color = (0, 0, 255) if exists else (0, 255, 0)
-            label = known_name if exists else "inconnu"
 
-            # Agrandir les coordonnées
-            top *= 2
-            right *= 2
-            bottom *= 2
-            left *= 2
+            # Vérifier si la personne détectée est la cible
+            if exists and known_name == self.target_person:
+                color = (0, 0, 255)  # Rouge
+                label = known_name
 
-            cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-            draw_bold_text(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                # Agrandir les coordonnées
+                top *= 2
+                right *= 2
+                bottom *= 2
+                left *= 2
 
-            if not exists:
-                self.new_faces.append((encoding, frame[top:bottom, left:right]))
+                # Dessiner un rectangle rouge autour de la cible
+                cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                draw_bold_text(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
+                # Jouer l'alarme sonore (une seule fois)
+                if not hasattr(self, "alarm_triggered") or not self.alarm_triggered:
+                    self.alarm_triggered = True
+                    Thread(target=self.play_alarm, daemon=True).start()
+
+                    # Sauvegarder l'image capturée
+                    self.save_detected_image(frame, known_name)
+
+            else:
+                # Si ce n'est pas la cible, dessiner un rectangle vert
+                color = (0, 255, 0)
+                label = "Inconnu"
+
+                # Agrandir les coordonnées
+                top *= 2
+                right *= 2
+                bottom *= 2
+                left *= 2
+
+                cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                draw_bold_text(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
         # Affiche dans canvas
         img = Image.fromarray(frame)
@@ -440,22 +491,22 @@ class FaceRecognitionApp:
 
         self.root.after(30, self.update_frame)  # 30 ms => ~30 fps
 
-
     def capture_faces(self):
+        self.capture_button.config(state="disabled")  # Désactiver le bouton
+
         if not self.new_faces:
             messagebox.showinfo("Info", "Aucun nouveau visage à capturer")
+            self.capture_button.config(state="normal")  # Réactiver le bouton
             return
 
-        # Demander le nom pour chaque visage capturé
         for i, (encoding, face_crop) in enumerate(self.new_faces):
             name = simpledialog.askstring("Nom du visage", f"Entrez le nom pour le visage {i+1}:")
-
             if name:
                 import_image.save_face_encoding(name, encoding)
                 messagebox.showinfo("Succès", f"Visage '{name}' enregistré")
 
-        # Nettoyer la liste après enregistrement
         self.new_faces.clear()
+        self.capture_button.config(state="normal")  # Réactiver le bouton
 
     def stop_camera(self):
         self.running = False
@@ -492,7 +543,6 @@ class FaceRecognitionApp:
         for name in sorted(encodings.keys()):
             listbox.insert(tk.END, name)
 
-
         def delete_selected():
             selected = listbox.curselection()
             if not selected:
@@ -500,6 +550,9 @@ class FaceRecognitionApp:
                 return
 
             name = listbox.get(selected[0])
+            confirm = messagebox.askyesno("Confirmation", f"Êtes-vous sûr de vouloir supprimer '{name}' ?")
+            if not confirm:
+                return
 
             # Charger les données du fichier metadata.json
             try:
@@ -529,8 +582,6 @@ class FaceRecognitionApp:
                     # Supprimer de la listbox
                     listbox.delete(selected[0])
 
-
-
                     messagebox.showinfo("Supprimé", f"'{name}' et son fichier d'encodage ont été supprimés.")
                     # Actualise la liste et l'affichage
                     self.refresh_encoding_list(listbox)
@@ -548,8 +599,40 @@ class FaceRecognitionApp:
             encodings = self.load_all_encodings()
             for name in sorted(encodings.keys()):
                 listbox.insert(tk.END, name)
+            self.update_target_selector()  # Mettre à jour le menu déroulant
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur de rechargement : {e}")
+
+    def set_target_person(self):
+        target_name = self.target_var.get()
+        if not target_name:
+            messagebox.showwarning("Attention", "Veuillez sélectionner une personne à traquer.")
+            return  # Arrêter l'exécution ici
+
+        self.target_person = target_name
+        self.alarm_triggered = False  # Réinitialiser l'alarme
+        messagebox.showinfo("Succès", f"'{target_name}' est maintenant la cible à traquer.")
+
+        self.update_target_selector()
+
+    def update_target_selector(self):
+        """Met à jour le menu déroulant avec les noms des personnes enregistrées."""
+        try:
+            encodings = self.load_all_encodings()
+            self.target_selector["values"] = sorted(encodings.keys())  # Ajouter les noms triés
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la mise à jour des cibles : {e}")
+
+    def play_alarm(self):
+        """Joue une alarme sonore."""
+        alarm_path = "face_recognition/alarm/alarm-301729.mp3"
+        if not os.path.exists(alarm_path):
+            print(f"Fichier audio introuvable : {alarm_path}")
+            return
+        try:
+            playsound(alarm_path)
+        except Exception as e:
+            print(f"Erreur lors de la lecture de l'alarme : {e}")
 
 
 def main():
@@ -560,3 +643,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
