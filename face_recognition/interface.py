@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import cv2
@@ -12,6 +13,7 @@ from threading import Thread
 from config import ENCODED_DIR, META_FILE
 import import_image
 from playsound import playsound  # Importer le module pour jouer un son
+import pygame
 
 
 def draw_bold_text(image, text, position, font, font_scale, color, thickness):
@@ -34,6 +36,7 @@ class FaceRecognitionApp:
         self.running = False  # Flag pour arrêter la capture
         self.new_faces = []  # Stocker encodages de nouveaux visages capturés
         self.target_person = None  # Nom de la personne à traquer
+        self.alarm_running = False  # Indique si l'alarme est en cours
 
         # Définir une taille minimale
         self.root.minsize(1024, 768)
@@ -248,6 +251,15 @@ class FaceRecognitionApp:
         )
         self.set_target_button.pack(side="left", padx=5)
 
+        # Bouton pour arrêter l'alarme
+        self.stop_alarm_button = ttk.Button(
+            self.alert_frame,
+            text="Arrêter l'alarme",
+            command=self.stop_alarm,
+            state="disabled"  # Désactivé par défaut
+        )
+        self.stop_alarm_button.pack(side="left", padx=5)
+
         # Barre de progression
         self.progress = ttk.Progressbar(
             self.main_frame,
@@ -292,18 +304,26 @@ class FaceRecognitionApp:
                 top, right, bottom, left = self.face_locations[i]
 
                 if exists:
-                    # Visage connu - Rouge avec nom
-                    cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 0, 255), 2)
-                    draw_bold_text(
-                        image_resized, f"{known_name}", (left, top - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1
-                    )
+                    if known_name == self.target_person:
+                        # Personne traquée - Rouge
+                        cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 0, 255), 2)
+                        draw_bold_text(
+                            image_resized, f"{known_name}", (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1
+                        )
+                    else:
+                        # Visage connu - Vert
+                        cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 255, 0), 2)
+                        draw_bold_text(
+                            image_resized, f"{known_name}", (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                        )
                 else:
-                    # Nouveau visage - Vert
-                    cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 255, 0), 2)
+                    # Nouveau visage - Bleu
+                    cv2.rectangle(image_resized, (left, top), (right, bottom), (255, 0, 0), 2)
                     draw_bold_text(
                         image_resized, f"inconnu {i + 1}", (left, top - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1
                     )
 
             self.root.after(0, self.update_display, image_resized)
@@ -425,7 +445,7 @@ class FaceRecognitionApp:
             self.stop_camera_button.config(state="normal")
 
         except Exception as e:
-            messagebox.showerror("Erreur", str(e))
+            messagebox.showerror("Erreur", f"Erreur lors du démarrage de la caméra : {e}")
 
     def update_frame(self):
         if not self.running:
@@ -436,77 +456,190 @@ class FaceRecognitionApp:
             print("Erreur : Impossible de lire la trame de la caméra.")
             return
 
+        # Convertir en RGB pour traitement
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Réduire la taille pour accélérer la détection
         small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
+        # Détecter les visages
         face_locations = face_recognition.face_locations(small_frame)
-        face_encodings = face_recognition.face_encodings(small_frame, face_locations)
 
-        for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
-            exists, known_name = self.verify_face(encoding)
+        if face_locations:
+            face_encodings = face_recognition.face_encodings(small_frame, face_locations)
+            known_encodings = self.load_all_encodings()
 
-            # Vérifier si la personne détectée est la cible
-            if exists and known_name == self.target_person:
-                color = (0, 0, 255)  # Rouge
-                label = known_name
+            for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+                recognized = False
+                recognized_name = "Inconnu"
 
-                # Agrandir les coordonnées
-                top *= 2
-                right *= 2
-                bottom *= 2
-                left *= 2
+                for name, known_encoding in known_encodings.items():
+                    face_distance = face_recognition.face_distance([known_encoding], face_encoding)[0]
+                    if face_distance < 0.5:
+                        recognized = True
+                        recognized_name = name
+                        break
 
-                # Dessiner un rectangle rouge autour de la cible
-                cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-                draw_bold_text(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                top, right, bottom, left = top * 2, right * 2, bottom * 2, left * 2
 
-                # Jouer l'alarme sonore (une seule fois)
-                if not hasattr(self, "alarm_triggered") or not self.alarm_triggered:
-                    self.alarm_triggered = True
-                    Thread(target=self.play_alarm, daemon=True).start()
+                if recognized and recognized_name == self.target_person:
+                    color = (0, 0, 255)  # Rouge pour la personne traquée
+                    cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                    draw_bold_text(frame, recognized_name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-                    # Sauvegarder l'image capturée
-                    self.save_detected_image(frame, known_name)
+                    if not hasattr(self, "alarm_triggered") or not self.alarm_triggered:
+                        self.alarm_triggered = True
+                        Thread(target=self.play_alarm, daemon=True).start()
+                        self.root.after(0, lambda: self.stop_alarm_button.config(state="normal"))
 
-            else:
-                # Si ce n'est pas la cible, dessiner un rectangle vert
-                color = (0, 255, 0)
-                label = "Inconnu"
+                elif recognized:
+                    color = (0, 255, 0)  # Vert pour les visages connus
+                    cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                    draw_bold_text(frame, recognized_name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-                # Agrandir les coordonnées
-                top *= 2
-                right *= 2
-                bottom *= 2
-                left *= 2
+                else:
+                    color = (255, 0, 0)  # Bleu pour les visages inconnus
+                    cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                    draw_bold_text(frame, "Inconnu", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-                cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-                draw_bold_text(frame, label, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-
-        # Affiche dans canvas
         img = Image.fromarray(frame)
         imgtk = ImageTk.PhotoImage(image=img)
         self.current_image_tk = imgtk
+        self.canvas.delete("all")
         self.canvas.create_image(self.canvas.winfo_width() // 2, self.canvas.winfo_height() // 2, anchor=tk.CENTER,
                                  image=imgtk)
 
-        self.root.after(30, self.update_frame)  # 30 ms => ~30 fps
+        self.root.after(30, self.update_frame)
 
     def capture_faces(self):
-        self.capture_button.config(state="disabled")  # Désactiver le bouton
-
-        if not self.new_faces:
-            messagebox.showinfo("Info", "Aucun nouveau visage à capturer")
-            self.capture_button.config(state="normal")  # Réactiver le bouton
+        """Capture des visages depuis la vue caméra actuelle"""
+        if not self.cap or not self.cap.isOpened():
+            messagebox.showwarning("Attention", "La caméra n'est pas active")
             return
 
-        for i, (encoding, face_crop) in enumerate(self.new_faces):
-            name = simpledialog.askstring("Nom du visage", f"Entrez le nom pour le visage {i+1}:")
-            if name:
-                import_image.save_face_encoding(name, encoding)
-                messagebox.showinfo("Succès", f"Visage '{name}' enregistré")
+        self.capture_button.config(state="disabled")  # Désactiver le bouton pendant la capture
 
-        self.new_faces.clear()
-        self.capture_button.config(state="normal")  # Réactiver le bouton
+        try:
+            # Prendre une image de la caméra
+            ret, frame = self.cap.read()
+            if not ret:
+                raise Exception("Impossible de capturer l'image depuis la caméra")
+
+            # Convertir en RGB pour traitement
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Réduire la taille pour accélérer la détection
+            small_frame = cv2.resize(frame_rgb, (0, 0), fx=0.5, fy=0.5)
+
+            # Détecter les visages
+            face_locations = face_recognition.face_locations(small_frame)
+
+            if not face_locations:
+                messagebox.showinfo("Information", "Aucun visage détecté dans l'image")
+                self.capture_button.config(state="normal")
+                return
+
+            # Encoder les visages détectés
+            face_encodings = face_recognition.face_encodings(small_frame, face_locations)
+
+            # Préparation pour la capture dans une liste temporaire
+            temp_faces = []
+
+            # Pour chaque visage détecté
+            for i, (face_location, face_encoding) in enumerate(zip(face_locations, face_encodings)):
+                top, right, bottom, left = face_location
+
+                # Vérifier si le visage existe déjà
+                exists, known_name = self.verify_face(face_encoding)
+
+                # Extraire le visage (à taille réelle)
+                top, right, bottom, left = top * 2, right * 2, bottom * 2, left * 2  # Convertir à la taille réelle
+                face_crop = frame_rgb[top:bottom, left:right]
+
+                # Si le visage n'existe pas, l'ajouter à la liste temporaire
+                if not exists:
+                    temp_faces.append((face_encoding, face_crop, i + 1))
+
+            # Si aucun nouveau visage n'a été trouvé
+            if not temp_faces:
+                messagebox.showinfo("Information", "Tous les visages détectés sont déjà enregistrés")
+                self.capture_button.config(state="normal")
+                return
+
+            # Pour chaque nouveau visage, demander un nom
+            for encoding, crop, face_num in temp_faces:
+                # Afficher l'image du visage
+                img = Image.fromarray(crop)
+                img = img.resize((200, int(200 * img.height / img.width)))
+                img_tk = ImageTk.PhotoImage(image=img)
+
+                # Créer une fenêtre pour afficher le visage
+                face_win = tk.Toplevel(self.root)
+                face_win.title(f"Nouveau visage #{face_num}")
+                face_win.transient(self.root)
+                face_win.grab_set()
+
+                # Afficher l'image
+                img_label = ttk.Label(face_win, image=img_tk)
+                img_label.image = img_tk  # Garder une référence
+                img_label.pack(padx=20, pady=10)
+
+                # Frame pour le nom
+                name_frame = ttk.Frame(face_win)
+                name_frame.pack(pady=10)
+
+                ttk.Label(name_frame, text="Nom:").pack(side=tk.LEFT, padx=5)
+                name_entry = ttk.Entry(name_frame)
+                name_entry.pack(side=tk.LEFT, padx=5)
+                name_entry.focus()
+
+                # Variables pour stocker le résultat
+                result_name = [None]  # Utiliser une liste pour permettre la modification dans la fonction interne
+
+                def save_name():
+                    name = name_entry.get().strip()
+                    if name:
+                        result_name[0] = name
+                        face_win.destroy()
+                    else:
+                        messagebox.showwarning("Attention", "Veuillez entrer un nom", parent=face_win)
+
+                def skip():
+                    face_win.destroy()
+
+                # Boutons
+                btn_frame = ttk.Frame(face_win)
+                btn_frame.pack(pady=10)
+
+                ttk.Button(btn_frame, text="Enregistrer", command=save_name).pack(side=tk.LEFT, padx=5)
+                ttk.Button(btn_frame, text="Ignorer", command=skip).pack(side=tk.LEFT, padx=5)
+
+                # Centrer la fenêtre
+                face_win.update_idletasks()
+                w = face_win.winfo_width()
+                h = face_win.winfo_height()
+                x = (face_win.winfo_screenwidth() - w) // 2
+                y = (face_win.winfo_screenheight() - h) // 2
+                face_win.geometry(f"{w}x{h}+{x}+{y}")
+
+                # Attendre que la fenêtre soit fermée
+                self.root.wait_window(face_win)
+
+                # Si un nom a été fourni, enregistrer le visage
+                if result_name[0]:
+                    try:
+                        import_image.save_face_encoding(result_name[0], encoding)
+                        messagebox.showinfo("Succès", f"Visage de {result_name[0]} enregistré avec succès")
+                    except Exception as e:
+                        messagebox.showerror("Erreur", str(e))
+
+            # Mettre à jour la liste des cibles après l'enregistrement
+            self.update_target_selector()
+
+        except Exception as e:
+            messagebox.showerror("Erreur", str(e))
+        finally:
+            self.capture_button.config(state="normal")  # Réactiver le bouton
 
     def stop_camera(self):
         self.running = False
@@ -624,16 +757,26 @@ class FaceRecognitionApp:
             messagebox.showerror("Erreur", f"Erreur lors de la mise à jour des cibles : {e}")
 
     def play_alarm(self):
-        """Joue une alarme sonore."""
-        alarm_path = "face_recognition/alarm/alarm-301729.mp3"
+        """Joue une alarme sonore en boucle jusqu'à ce qu'elle soit arrêtée."""
+        alarm_path = os.path.join(os.path.dirname(__file__), "alarm", "alarm-301729.mp3")
         if not os.path.exists(alarm_path):
-            print(f"Fichier audio introuvable : {alarm_path}")
+            messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}")
             return
-        try:
-            playsound(alarm_path)
-        except Exception as e:
-            print(f"Erreur lors de la lecture de l'alarme : {e}")
 
+        pygame.mixer.init()  # Initialiser le module mixer de pygame
+        pygame.mixer.music.load(alarm_path)  # Charger le fichier audio
+        pygame.mixer.music.play(loops=-1)  # Jouer en boucle infinie
+
+        self.alarm_running = True
+        self.stop_alarm_button.config(state="normal")  # Activer le bouton pour arrêter l'alarme
+
+    def stop_alarm(self):
+        """Arrête l'alarme sonore immédiatement."""
+        if self.alarm_running:
+            pygame.mixer.music.stop()  # Arrêter la lecture du son
+            self.alarm_running = False
+            self.stop_alarm_button.config(state="disabled")  # Désactiver le bouton
+            messagebox.showinfo("Alarme", "L'alarme a été arrêtée.")
 
 def main():
     root = tk.Tk()
@@ -643,4 +786,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
