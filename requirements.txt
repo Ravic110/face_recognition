@@ -1,0 +1,8 @@
+face_recognition
+opencv-python
+numpy
+Pillow
+pygame
+playsound
+ttkbootstrap
+pytest

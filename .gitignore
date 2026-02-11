@@ -1,5 +1,8 @@
-encodings
 *.log
-*.json
-__pycache__
 *.pyc
+.idea
+.idea/
+.venv/
+__pycache__/
+encodings/
+face_recognition/encodings/
