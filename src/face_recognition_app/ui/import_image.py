@@ -1,21 +1,19 @@
 import cv2
 import face_recognition
-import os
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 
-from encodings_store import save_face_encoding as store_save_face_encoding
+from face_recognition_app.storage.encodings_store import (
+    save_face_encoding as store_save_face_encoding,
+)
 
 
 def save_face_encoding(name, face_encoding):
     """
     Enregistrer l'encodage du visage detecte dans un fichier JSON.
     """
-    try:
-        store_save_face_encoding(name, face_encoding)
-        print(f"Encodage pour {name} sauvegarde avec succes.")
-    except Exception as e:
-        print(f"Erreur lors de la sauvegarde de l'encodage : {e}")
+    store_save_face_encoding(name, face_encoding)
+    print(f"Encodage pour {name} sauvegarde avec succes.")
 
 
 def measure_sharpness(image):
@@ -128,7 +126,10 @@ def import_face_from_image():
 
     if face_encoding is not None:
         name = input("Entrez le nom de la personne pour le visage selectionne : ")
-        save_face_encoding(name, face_encoding)
+        try:
+            save_face_encoding(name, face_encoding)
+        except Exception as e:
+            print(f"Erreur lors de la sauvegarde de l'encodage : {e}")
 
 
 def resize_image_to_fit_screen(image, max_width=1280, max_height=720):

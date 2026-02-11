@@ -16,24 +16,24 @@ pip install -r requirements.txt
 - Main launcher (image UI + realtime webcam):
 
 ```bash
-python face_recognition/main.py
+python main.py
 ```
 
 - Video importer UI:
 
 ```bash
-python face_recognition/UI_video_processor.py
+PYTHONPATH=src python -m face_recognition_app.ui.video_importer
 ```
 
 - CLI image import (select a face and name it):
 
 ```bash
-python face_recognition/import_image.py
+PYTHONPATH=src python -m face_recognition_app.ui.import_image
 ```
 
 ## Notes
 
-- Encodings are stored in `face_recognition/encodings/`.
+- Encodings are stored in `encodings/`.
 - The webcam and audio alarm require a working camera and audio output.
 
 ## Tests

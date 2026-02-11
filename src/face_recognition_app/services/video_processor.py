@@ -3,11 +3,11 @@ import face_recognition
 import os
 import json
 import uuid
-from config import ENCODED_DIR
+
+from face_recognition_app.storage.config import ENCODED_DIR
 
 
-def process_chunk(args):
-    video_path, start_frame, end_frame, chunk_id, frame_skip = args  # Ajout de frame_skip
+def process_chunk(video_path, start_frame, end_frame, chunk_id, frame_skip):
     cap = cv2.VideoCapture(video_path)
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
@@ -38,7 +38,7 @@ def process_chunk(args):
                         'encoding': encoding.tolist(),
                         'image': buffer.tobytes().hex()  # Sérialisation hexadécimale
                     })
-                except Exception as e:
+                except Exception:
                     continue
 
         frame_count += 1

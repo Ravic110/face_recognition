@@ -1,8 +1,7 @@
-import numpy as np
 from datetime import datetime
 from face_recognition import compare_faces, face_distance
 
-from encodings_store import (
+from face_recognition_app.storage.encodings_store import (
     delete_encoding as _delete_encoding,
     load_existing_encodings as _load_existing_encodings,
     save_face_encoding as _save_face_encoding,

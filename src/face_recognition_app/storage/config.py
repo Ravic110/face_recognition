@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 # Dossier pour stocker les encodages faciaux (chemin absolu)
-BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ENCODED_DIR = BASE_DIR / "encodings"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_ENCODED_DIR = PROJECT_ROOT / "encodings"
 LEGACY_ENCODED_DIR = Path.cwd() / "encodings"
 
 def _has_json_files(path):

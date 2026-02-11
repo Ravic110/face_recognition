@@ -8,8 +8,11 @@ from typing import Tuple, Optional, Dict, Any
 from dataclasses import dataclass
 from pathlib import Path
 import logging
-from config import ENCODED_DIR, META_FILE
-from encodings_store import save_face_encoding as store_save_face_encoding
+
+from face_recognition_app.storage.config import ENCODED_DIR, META_FILE
+from face_recognition_app.storage.encodings_store import (
+    save_face_encoding as store_save_face_encoding,
+)
 
 # Configuration du logging
 logging.basicConfig(

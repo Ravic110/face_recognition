@@ -1,6 +1,6 @@
 import numpy as np
 
-import encodings_store as store
+from face_recognition_app.storage import encodings_store as store
 
 
 def _setup_tmp_store(tmp_path):

@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
-import cv2
-from PIL import Image, ImageTk
-import numpy as np
-import os
-import face_recognition
-import json
-from datetime import datetime
+from tkinter import ttk, messagebox
 from tkinter.filedialog import askopenfilename
 from threading import Thread
-from config import ENCODED_DIR
-from encodings_store import load_encodings_map, delete_encoding as delete_stored_encoding
-import import_image
-from playsound import playsound  # Importer le module pour jouer un son
+import cv2
+from PIL import Image, ImageTk
+import face_recognition
 import pygame
+
+from face_recognition_app.storage.config import PROJECT_ROOT
+from face_recognition_app.storage.encodings_store import (
+    load_encodings_map,
+    delete_encoding as delete_stored_encoding,
+)
+from face_recognition_app.ui import import_image
 
 
 def draw_bold_text(image, text, position, font, font_scale, color, thickness):
@@ -738,13 +737,13 @@ class FaceRecognitionApp:
 
     def play_alarm(self):
         """Joue une alarme sonore en boucle jusqu'a ce qu'elle soit arretee."""
-        alarm_path = os.path.join(os.path.dirname(__file__), "alarm", "alarm-301729.mp3")
-        if not os.path.exists(alarm_path):
+        alarm_path = PROJECT_ROOT / "alarm" / "alarm-301729.mp3"
+        if not alarm_path.exists():
             self.root.after(0, lambda: messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}"))
             return
 
         pygame.mixer.init()
-        pygame.mixer.music.load(alarm_path)
+        pygame.mixer.music.load(str(alarm_path))
         pygame.mixer.music.play(loops=-1)
 
         self.alarm_running = True

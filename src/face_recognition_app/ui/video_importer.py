@@ -4,19 +4,23 @@ from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox, Querybox
 from PIL import Image, ImageTk
 from tkinter import LEFT, Canvas, Frame, Scrollbar, filedialog
-from video_processor import process_chunk
-from encodings_store import load_existing_encodings, save_face_encoding, delete_encoding, load_image_for_name
-from utils import is_duplicate
-from config import ENCODED_DIR
 import threading
 import cv2
 import os
 import logging
 import json
 import numpy as np
-import uuid
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from queue import Queue
+
+from face_recognition_app.core.utils import is_duplicate
+from face_recognition_app.services.video_processor import process_chunk
+from face_recognition_app.storage.encodings_store import (
+    load_existing_encodings,
+    save_face_encoding,
+    delete_encoding,
+    load_image_for_name,
+)
 
 logging.basicConfig(filename='app.log', level=logging.INFO)
 
@@ -202,7 +206,7 @@ class VideoImporterApp:
             frame_skip = self.frame_skip_var.get()
 
             for i, chunk in enumerate(chunks):
-                future = self.executor.submit(process_chunk, (*chunk, i, frame_skip))  # Ajout de frame_skip
+                future = self.executor.submit(process_chunk, *chunk, i, frame_skip)
                 futures.append((future, i))
                 self.update_progress(0, (i / len(chunks)) * 100)
 
@@ -442,7 +446,7 @@ class VideoImporterApp:
             row.pack(fill='x', pady=5)
 
             img_data = self.load_encoding_data(enc['name'])
-            if img_data:
+            if img_data is not None:
                 img = self.convert_cv_to_tk(img_data)
                 ttk.Label(row, image=img).pack(side=LEFT)
 

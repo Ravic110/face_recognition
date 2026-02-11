@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from config import ENCODED_DIR, META_FILE
+from .config import ENCODED_DIR, META_FILE
 
 
 def _iter_encoding_files():
