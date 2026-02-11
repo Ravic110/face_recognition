@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import logging
 from config import ENCODED_DIR, META_FILE
+from encodings_store import save_face_encoding as store_save_face_encoding
 
 # Configuration du logging
 logging.basicConfig(
@@ -52,10 +53,10 @@ class SecureFaceEncoder:
         Args:
             name: Nom de la personne
             frame: Image contenant le visage
-            selected_face_idx: Index du visage sélectionné
+            selected_face_idx: Index du visage selectionne
 
         Returns:
-            bool: True si la sauvegarde est réussie, False sinon
+            bool: True si la sauvegarde est reussie, False sinon
         """
         try:
             rgb_frame = self._prepare_frame(frame)
@@ -65,12 +66,9 @@ class SecureFaceEncoder:
                 return False
 
             face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-            face_data = self._create_face_data(name, face_encodings[selected_face_idx])
+            store_save_face_encoding(name, face_encodings[selected_face_idx])
 
-            self._save_encoding_file(face_data)
-            self._update_metadata(face_data)
-
-            logging.info(f"Encodage pour {name} sauvegardé avec succès.")
+            logging.info(f"Encodage pour {name} sauvegarde avec succes.")
             return True
 
         except Exception as e:
@@ -98,30 +96,6 @@ class SecureFaceEncoder:
         timestamp = datetime.now().isoformat()
         unique_id = self._generate_unique_id(name, timestamp)
         return FaceData(name=name, encoding=encoding, timestamp=timestamp, unique_id=unique_id)
-
-    def _save_encoding_file(self, face_data: FaceData) -> None:
-        """Sauvegarde les données d'encodage dans un fichier JSON."""
-        encoding_data = {
-            'name': face_data.name,
-            'encoding': face_data.encoding.tolist(),
-            'timestamp': face_data.timestamp
-        }
-
-        file_path = self.encoded_dir / f"{face_data.unique_id}.json"
-        with open(file_path, 'w') as f:
-            json.dump(encoding_data, f, indent=4)
-
-    def _update_metadata(self, face_data: FaceData) -> None:
-        """Met à jour le fichier de métadonnées."""
-        metadata = self._load_metadata()
-        metadata[face_data.unique_id] = {
-            'name': face_data.name,
-            'date_creation': face_data.timestamp
-        }
-
-        with open(self.meta_file, 'w') as f:
-            json.dump(metadata, f, indent=4)
-
     def _load_metadata(self) -> Dict[str, Any]:
         """Charge les métadonnées existantes ou retourne un dictionnaire vide."""
         if self.meta_file.exists():

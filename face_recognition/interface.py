@@ -10,7 +10,8 @@ import json
 from datetime import datetime
 from tkinter.filedialog import askopenfilename
 from threading import Thread
-from config import ENCODED_DIR, META_FILE
+from config import ENCODED_DIR
+from encodings_store import load_encodings_map, delete_encoding as delete_stored_encoding
 import import_image
 from playsound import playsound  # Importer le module pour jouer un son
 import pygame
@@ -37,6 +38,7 @@ class FaceRecognitionApp:
         self.new_faces = []  # Stocker encodages de nouveaux visages capturés
         self.target_person = None  # Nom de la personne à traquer
         self.alarm_running = False  # Indique si l'alarme est en cours
+        self.cached_encodings = None
 
         # Définir une taille minimale
         self.root.minsize(1024, 768)
@@ -90,14 +92,13 @@ class FaceRecognitionApp:
         return (best_match is not None), best_match
 
     def load_all_encodings(self):
-        encoded_faces = {}
-        for file_name in os.listdir(ENCODED_DIR):
-            if file_name.endswith(".json") and file_name != os.path.basename(META_FILE):
-                with open(os.path.join(ENCODED_DIR, file_name), 'r') as file:
-                    data = json.load(file)
-                    if 'name' in data and 'encoding' in data:
-                        encoded_faces[data['name']] = np.array(data['encoding'])
-        return encoded_faces
+        return load_encodings_map()
+
+    def get_cached_encodings(self):
+        if self.cached_encodings is None:
+            self.cached_encodings = self.load_all_encodings()
+        return self.cached_encodings
+
 
     def setup_ui(self):
         # Frame principale avec poids pour l'expansion
@@ -405,6 +406,7 @@ class FaceRecognitionApp:
             messagebox.showinfo("Succès", f"Visage de {name} enregistré avec succès")
 
             # Actualise la liste et l'affichage
+            self.cached_encodings = None
             self.update_faces_after_save()
 
             # Réinitialise le champ de nom
@@ -431,7 +433,8 @@ class FaceRecognitionApp:
             self.face_selector.config(state="disabled")
 
         # Actualise l'image affichée pour refléter les changements
-        self.process_image()
+        self.progress.start()
+        Thread(target=self.process_image, daemon=True).start()
 
     def start_camera(self):
         try:
@@ -441,6 +444,7 @@ class FaceRecognitionApp:
 
             self.running = True
             self.capture_button.config(state="normal")
+            self.start_camera_button.config(state="disabled")
             self.update_frame()
             self.stop_camera_button.config(state="normal")
 
@@ -467,7 +471,7 @@ class FaceRecognitionApp:
 
         if face_locations:
             face_encodings = face_recognition.face_encodings(small_frame, face_locations)
-            known_encodings = self.load_all_encodings()
+            known_encodings = self.get_cached_encodings()
 
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
                 recognized = False
@@ -679,48 +683,23 @@ class FaceRecognitionApp:
         def delete_selected():
             selected = listbox.curselection()
             if not selected:
-                messagebox.showwarning("Attention", "Sélectionnez un visage à supprimer.")
+                messagebox.showwarning("Attention", "Selectionnez un visage a supprimer.")
                 return
 
             name = listbox.get(selected[0])
-            confirm = messagebox.askyesno("Confirmation", f"Êtes-vous sûr de vouloir supprimer '{name}' ?")
+            confirm = messagebox.askyesno("Confirmation", f"Etes-vous sur de vouloir supprimer '{name}' ?")
             if not confirm:
                 return
 
-            # Charger les données du fichier metadata.json
             try:
-                with open(META_FILE, "r") as f:
-                    data = json.load(f)
+                removed = delete_stored_encoding(name)
+                if not removed:
+                    messagebox.showerror("Erreur", f"Le nom '{name}' n'existe pas.")
+                    return
 
-                # Trouver la clé correspondant au nom sélectionné
-                key_to_delete = None
-                for key, value in data.items():
-                    if value["name"] == name:
-                        key_to_delete = key
-                        break
-
-                if key_to_delete:
-                    # Supprimer le fichier associé au hash
-                    encoding_file = os.path.join(ENCODED_DIR, f"{key_to_delete}.json")
-                    if os.path.exists(encoding_file):
-                        os.remove(encoding_file)
-
-                    # Supprimer l'entrée de metadata
-                    del data[key_to_delete]
-
-                    # Sauvegarder les modifications
-                    with open(META_FILE, "w") as f:
-                        json.dump(data, f, indent=4)
-
-                    # Supprimer de la listbox
-                    listbox.delete(selected[0])
-
-                    messagebox.showinfo("Supprimé", f"'{name}' et son fichier d'encodage ont été supprimés.")
-                    # Actualise la liste et l'affichage
-                    self.refresh_encoding_list(listbox)
-                else:
-                    messagebox.showerror("Erreur", f"Le nom '{name}' n'existe pas dans metadata.json.")
-
+                listbox.delete(selected[0])
+                messagebox.showinfo("Supprime", f"'{name}' a ete supprime.")
+                self.refresh_encoding_list(listbox)
             except Exception as e:
                 messagebox.showerror("Erreur", f"Une erreur est survenue lors de la suppression : {e}")
 
@@ -730,6 +709,7 @@ class FaceRecognitionApp:
         listbox.delete(0, tk.END)
         try:
             encodings = self.load_all_encodings()
+            self.cached_encodings = encodings
             for name in sorted(encodings.keys()):
                 listbox.insert(tk.END, name)
             self.update_target_selector()  # Mettre à jour le menu déroulant
@@ -757,18 +737,18 @@ class FaceRecognitionApp:
             messagebox.showerror("Erreur", f"Erreur lors de la mise à jour des cibles : {e}")
 
     def play_alarm(self):
-        """Joue une alarme sonore en boucle jusqu'à ce qu'elle soit arrêtée."""
+        """Joue une alarme sonore en boucle jusqu'a ce qu'elle soit arretee."""
         alarm_path = os.path.join(os.path.dirname(__file__), "alarm", "alarm-301729.mp3")
         if not os.path.exists(alarm_path):
-            messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}")
+            self.root.after(0, lambda: messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}"))
             return
 
-        pygame.mixer.init()  # Initialiser le module mixer de pygame
-        pygame.mixer.music.load(alarm_path)  # Charger le fichier audio
-        pygame.mixer.music.play(loops=-1)  # Jouer en boucle infinie
+        pygame.mixer.init()
+        pygame.mixer.music.load(alarm_path)
+        pygame.mixer.music.play(loops=-1)
 
         self.alarm_running = True
-        self.stop_alarm_button.config(state="normal")  # Activer le bouton pour arrêter l'alarme
+        self.root.after(0, lambda: self.stop_alarm_button.config(state="normal"))
 
     def stop_alarm(self):
         """Arrête l'alarme sonore immédiatement."""

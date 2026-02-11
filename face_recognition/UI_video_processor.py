@@ -5,7 +5,8 @@ from ttkbootstrap.dialogs import Messagebox, Querybox
 from PIL import Image, ImageTk
 from tkinter import LEFT, Canvas, Frame, Scrollbar, filedialog
 from video_processor import process_chunk
-from utils import load_existing_encodings, save_face_encoding, delete_encoding, validate_encoding, is_duplicate
+from encodings_store import load_existing_encodings, save_face_encoding, delete_encoding, load_image_for_name
+from utils import is_duplicate
 from config import ENCODED_DIR
 import threading
 import cv2
@@ -31,7 +32,6 @@ class VideoImporterApp:
         self.tolerance = 0.5
         self.executor = ProcessPoolExecutor(max_workers=4)
         self.io_executor = ThreadPoolExecutor(max_workers=4)  # Pour les tâches I/O bound
-        self.cpu_executor = ProcessPoolExecutor(max_workers=4)
         self.progress_queue = Queue()
         self.running = True
         self.existing_encodings = load_existing_encodings()
@@ -195,6 +195,9 @@ class VideoImporterApp:
     def process_video_parallel(self):
         try:
             chunks = self.prepare_video_chunks()
+            if not chunks:
+                self.log_error("Aucune frame a traiter.")
+                return
             futures = []
             frame_skip = self.frame_skip_var.get()
 
@@ -221,11 +224,23 @@ class VideoImporterApp:
     def prepare_video_chunks(self):
         cap = cv2.VideoCapture(self.video_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        chunk_size = total_frames // 4
-        return [
-            (self.video_path, i * chunk_size, (i + 1) * chunk_size)
-            for i in range(4)
-        ]
+        cap.release()
+
+        if total_frames <= 0:
+            return []
+
+        num_chunks = min(4, total_frames)
+        chunk_size = total_frames // num_chunks
+        chunks = []
+        start = 0
+        for i in range(num_chunks):
+            if i == num_chunks - 1:
+                end = total_frames - 1
+            else:
+                end = start + chunk_size - 1
+            chunks.append((self.video_path, start, end))
+            start = end + 1
+        return chunks
 
     def merge_temp_files(self, temp_files):
         all_faces = []
@@ -440,17 +455,13 @@ class VideoImporterApp:
         frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
     def load_encoding_data(self, name):
-        for filename in os.listdir(ENCODED_DIR):
-            if filename.endswith(".json") and name in filename:
-                with open(os.path.join(ENCODED_DIR, filename), 'r') as f:
-                    data = json.load(f)
-                    return data.get('image')
-        return None
+        return load_image_for_name(name)
 
     def convert_cv_to_tk(self, img_data):
         try:
-            img_array = np.array(img_data, dtype=np.uint8)
-            img = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
+            if img_data is None:
+                return None
+            img = cv2.cvtColor(img_data, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img).resize((100, 100))
             return ImageTk.PhotoImage(img)
         except Exception as e:
@@ -481,6 +492,7 @@ class VideoImporterApp:
     def on_closing(self):
         self.running = False
         self.executor.shutdown(wait=False)
+        self.io_executor.shutdown(wait=False)
         self.root.destroy()
 
 
