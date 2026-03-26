@@ -1,8 +1,51 @@
-*.log
+# Python
 *.pyc
-.idea
-.idea/
-.venv/
+*.pyo
+*.pyd
+*.pyw
 __pycache__/
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+ENV/
+
+# Tests & couverture
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# Données générées par l'app
 encodings/
 face_recognition/encodings/
+temp/
+*.json
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Fichiers sensibles
+.env
+.env.*
+secrets.*
