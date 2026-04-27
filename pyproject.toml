@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "face_recognition_app"
+version = "0.1.0"
+description = "Local face recognition surveillance application with Tkinter UI"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = ["face recognition", "surveillance", "opencv", "tkinter", "security"]
+
+dependencies = [
+    "face_recognition",
+    "opencv-python",
+    "numpy",
+    "Pillow",
+    "pygame",
+    "playsound",
+    "ttkbootstrap",
+    "flask",
+    "plyer",
+    "requests",
+    "psutil",
+]
+
+[project.scripts]
+face-recognition = "face_recognition_app.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

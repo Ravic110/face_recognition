@@ -26,8 +26,12 @@ coverage.xml
 # Données générées par l'app
 encodings/
 face_recognition/encodings/
+clips/
 temp/
 *.json
+*.db
+events.db
+profiles.json
 
 # Logs
 *.log
@@ -49,3 +53,4 @@ desktop.ini
 .env
 .env.*
 secrets.*
+.claude

@@ -14,6 +14,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from queue import Queue
 
 from face_recognition_app.core.utils import is_duplicate
+from face_recognition_app.storage.config import VIDEO_FACE_TOLERANCE
 from face_recognition_app.services.video_processor import process_chunk
 from face_recognition_app.storage.encodings_store import (
     load_existing_encodings,
@@ -33,7 +34,7 @@ class VideoImporterApp:
         self.style = ttk.Style("solar")
 
         self.video_path = None
-        self.tolerance = 0.5
+        self.tolerance = VIDEO_FACE_TOLERANCE
         self.executor = ProcessPoolExecutor(max_workers=4)
         self.io_executor = ThreadPoolExecutor(max_workers=4)  # Pour les tâches I/O bound
         self.progress_queue = Queue()

@@ -1,6 +1,7 @@
 from datetime import datetime
 from face_recognition import compare_faces, face_distance
 
+from face_recognition_app.storage.config import DUPLICATE_TOLERANCE, FACE_RECOGNITION_THRESHOLD
 from face_recognition_app.storage.encodings_store import (
     delete_encoding as _delete_encoding,
     load_existing_encodings as _load_existing_encodings,
@@ -18,7 +19,7 @@ def save_face_encoding(name, encoding, image):
     _save_face_encoding(name, encoding, image)
 
 
-def is_duplicate(encoding, existing_encodings, tolerance=0.6):
+def is_duplicate(encoding, existing_encodings, tolerance=DUPLICATE_TOLERANCE):
     encodings_list = [e["encoding"] for e in existing_encodings]
     matches = compare_faces(encodings_list, encoding, tolerance + 0.1)
 

@@ -6,3 +6,7 @@ pygame
 playsound
 ttkbootstrap
 pytest
+flask          # API REST locale
+plyer          # Notifications bureau (Windows / Linux / macOS)
+requests       # Alertes webhook
+psutil         # Monitoring CPU / mémoire

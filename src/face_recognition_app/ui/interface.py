@@ -1,14 +1,23 @@
 # -*- coding: utf-8 -*-
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
-from threading import Thread
+from threading import Thread, Lock
+import logging
 import cv2
 from PIL import Image, ImageTk
 import face_recognition
 import pygame
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
-from face_recognition_app.storage.config import PROJECT_ROOT
+from face_recognition_app.storage.config import PROJECT_ROOT, FACE_RECOGNITION_THRESHOLD
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 from face_recognition_app.storage.encodings_store import (
     load_encodings_map,
     delete_encoding as delete_stored_encoding,
@@ -38,6 +47,7 @@ class FaceRecognitionApp:
         self.target_person = None  # Nom de la personne à traquer
         self.alarm_running = False  # Indique si l'alarme est en cours
         self.cached_encodings = None
+        self._encodings_lock = Lock()
 
         # Définir une taille minimale
         self.root.minsize(1024, 768)
@@ -72,7 +82,7 @@ class FaceRecognitionApp:
 
         self.setup_ui()
 
-    def verify_face(self, face_encoding, threshold=0.5):
+    def verify_face(self, face_encoding, threshold=FACE_RECOGNITION_THRESHOLD):
         """
         Vérifier si le visage existe avec une meilleure précision.
         :param face_encoding: L'encodage du visage à vérifier.
@@ -94,9 +104,11 @@ class FaceRecognitionApp:
         return load_encodings_map()
 
     def get_cached_encodings(self):
-        if self.cached_encodings is None:
-            self.cached_encodings = self.load_all_encodings()
-        return self.cached_encodings
+        with self._encodings_lock:
+            if self.cached_encodings is None:
+                self.cached_encodings = self.load_all_encodings()
+                logger.info("Cache des encodages chargé (%d entrée(s))", len(self.cached_encodings))
+            return self.cached_encodings
 
 
     def setup_ui(self):
@@ -114,7 +126,8 @@ class FaceRecognitionApp:
             self.button_frame,
             text="Charger une image",
             command=self.load_image,
-            width=20
+            width=20,
+            bootstyle=PRIMARY,
         )
         self.load_button.pack(side="left", padx=5)
 
@@ -122,7 +135,8 @@ class FaceRecognitionApp:
             self.button_frame,
             text="Démarrer la caméra",
             command=self.start_camera,
-            width=20
+            width=20,
+            bootstyle=SUCCESS,
         )
         self.start_camera_button.pack(side="left", padx=5)
 
@@ -131,7 +145,8 @@ class FaceRecognitionApp:
             text="Capturer",
             command=self.capture_faces,
             width=20,
-            state="disabled"
+            state="disabled",
+            bootstyle=INFO,
         )
         self.capture_button.pack(side="left", padx=5)
 
@@ -140,7 +155,8 @@ class FaceRecognitionApp:
             text="Arrêter la caméra",
             command=self.stop_camera,
             width=20,
-            state="disabled"
+            state="disabled",
+            bootstyle=DANGER,
         )
         self.stop_camera_button.pack(side="left", padx=5)
 
@@ -148,16 +164,18 @@ class FaceRecognitionApp:
             self.button_frame,
             text="Gérer les encodages",
             command=self.open_manage_window,
-            width=20
+            width=20,
+            bootstyle=SECONDARY,
         )
         self.manage_encodings_button.pack(side="left", padx=5)
 
         # Canvas redimensionnable
         self.canvas = tk.Canvas(
             self.main_frame,
-            bg='gray85',
+            bg='#2b2b2b',
             width=800,
-            height=600
+            height=600,
+            highlightthickness=0,
         )
         self.canvas.grid(row=1, column=0, sticky="nsew", pady=10)
 
@@ -165,15 +183,14 @@ class FaceRecognitionApp:
         self.info_frame = ttk.LabelFrame(
             self.main_frame,
             text="Informations",
-            padding="10"
         )
         self.info_frame.grid(row=2, column=0, sticky="ew", pady=(10, 5))
 
         self.info_label = ttk.Label(
             self.info_frame,
-            text="Aucune image chargée"
+            text="Aucune image chargée",
         )
-        self.info_label.grid(row=0, column=0, sticky="w")
+        self.info_label.grid(row=0, column=0, sticky="w", padx=10, pady=5)
 
         # Frame de sélection et d'enregistrement côte à côte
         self.control_frame = ttk.Frame(self.main_frame)
@@ -185,7 +202,6 @@ class FaceRecognitionApp:
         self.selection_frame = ttk.LabelFrame(
             self.control_frame,
             text="Sélection du visage",
-            padding="10"
         )
         self.selection_frame.grid(row=0, column=0, sticky="ew", padx=(0, 5))
 
@@ -194,78 +210,83 @@ class FaceRecognitionApp:
             self.selection_frame,
             textvariable=self.face_var,
             state="readonly",
-            values=[]  # Initialement vide, mis à jour après détection
+            values=[],
+            bootstyle=PRIMARY,
         )
-        self.face_selector.pack(side="left", padx=5)
+        self.face_selector.pack(side="left", padx=5, pady=8)
 
         self.select_button = ttk.Button(
             self.selection_frame,
             text="Sélectionner ce visage",
             command=self.select_face,
-            state="disabled"
+            state="disabled",
+            bootstyle=(OUTLINE, PRIMARY),
         )
-        self.select_button.pack(side="left", padx=5)
+        self.select_button.pack(side="left", padx=5, pady=8)
 
         # Frame d'enregistrement (à droite)
         self.name_frame = ttk.LabelFrame(
             self.control_frame,
             text="Enregistrement",
-            padding="10"
         )
         self.name_frame.grid(row=0, column=1, sticky="ew", padx=(5, 0))
 
-        ttk.Label(self.name_frame, text="Nom:").pack(side="left", padx=5)
-        self.name_entry = ttk.Entry(self.name_frame)
-        self.name_entry.pack(side="left", padx=5)
+        ttk.Label(self.name_frame, text="Nom:").pack(side="left", padx=5, pady=8)
+        self.name_entry = ttk.Entry(self.name_frame, bootstyle=SUCCESS)
+        self.name_entry.pack(side="left", padx=5, pady=8)
 
         self.save_button = ttk.Button(
             self.name_frame,
             text="Enregistrer",
             command=self.save_face,
-            state="disabled"
+            state="disabled",
+            bootstyle=SUCCESS,
         )
-        self.save_button.pack(side="left", padx=5)
+        self.save_button.pack(side="left", padx=5, pady=8)
+
+        # Barre de progression
+        self.progress = ttk.Progressbar(
+            self.main_frame,
+            mode='indeterminate',
+            bootstyle=INFO,
+        )
+        self.progress.grid(row=4, column=0, sticky="ew", pady=10)
 
         # Frame pour la fonctionnalité "alerté"
         self.alert_frame = ttk.LabelFrame(
             self.main_frame,
             text="Alertes",
-            padding="10"
         )
         self.alert_frame.grid(row=5, column=0, sticky="ew", pady=10)
 
-        ttk.Label(self.alert_frame, text="Personne à traquer :").pack(side="left", padx=5)
+        ttk.Label(self.alert_frame, text="Personne à traquer :").pack(side="left", padx=5, pady=8)
         self.target_var = tk.StringVar(value="")
         self.target_selector = ttk.Combobox(
             self.alert_frame,
             textvariable=self.target_var,
             state="readonly",
-            values=[]  # Initialement vide, mis à jour après chargement des encodages
+            values=[],
+            bootstyle=WARNING,
         )
-        self.target_selector.pack(side="left", padx=5)
+        self.target_selector.pack(side="left", padx=5, pady=8)
 
         self.set_target_button = ttk.Button(
             self.alert_frame,
             text="Définir comme cible",
-            command=self.set_target_person
+            command=self.set_target_person,
+            bootstyle=WARNING,
         )
-        self.set_target_button.pack(side="left", padx=5)
+        self.set_target_button.pack(side="left", padx=5, pady=8)
 
         # Bouton pour arrêter l'alarme
         self.stop_alarm_button = ttk.Button(
             self.alert_frame,
             text="Arrêter l'alarme",
             command=self.stop_alarm,
-            state="disabled"  # Désactivé par défaut
+            state="disabled",
+            bootstyle=DANGER,
         )
-        self.stop_alarm_button.pack(side="left", padx=5)
-
-        # Barre de progression
-        self.progress = ttk.Progressbar(
-            self.main_frame,
-            mode='indeterminate'
-        )
-        self.progress.grid(row=4, column=0, sticky="ew", pady=10)
+        self.stop_alarm_button.pack(side="left", padx=5, pady=8)
 
     def load_image(self):
         try:
@@ -352,10 +373,8 @@ class FaceRecognitionApp:
         if self.face_locations:
             self.info_label.config(text=f"{len(self.face_locations)} visage(s) détecté(s)")
             self.face_selector.config(state="readonly")
-            # Met à jour les options du menu déroulant avec les indices des visages
             self.face_selector["values"] = [f"Visage {i + 1}" for i in range(len(self.face_locations))]
-
-            self.face_var.set("")  # Réinitialise la sélection
+            self.face_var.set("")
             self.select_button.config(state="normal")
         else:
             self.info_label.config(text="Aucun visage détecté")
@@ -402,10 +421,12 @@ class FaceRecognitionApp:
 
         try:
             import_image.save_face_encoding(name, self.face_encodings[self.selected_face_index])
+            logger.info("Visage '%s' enregistré avec succès.", name)
             messagebox.showinfo("Succès", f"Visage de {name} enregistré avec succès")
 
             # Actualise la liste et l'affichage
-            self.cached_encodings = None
+            with self._encodings_lock:
+                self.cached_encodings = None
             self.update_faces_after_save()
 
             # Réinitialise le champ de nom
@@ -456,7 +477,7 @@ class FaceRecognitionApp:
 
         ret, frame = self.cap.read()
         if not ret:
-            print("Erreur : Impossible de lire la trame de la caméra.")
+            logger.error("Impossible de lire la trame de la caméra.")
             return
 
         # Convertir en RGB pour traitement
@@ -478,7 +499,7 @@ class FaceRecognitionApp:
 
                 for name, known_encoding in known_encodings.items():
                     face_distance = face_recognition.face_distance([known_encoding], face_encoding)[0]
-                    if face_distance < 0.5:
+                    if face_distance < FACE_RECOGNITION_THRESHOLD:
                         recognized = True
                         recognized_name = name
                         break
@@ -587,12 +608,14 @@ class FaceRecognitionApp:
                 img_label.image = img_tk  # Garder une référence
                 img_label.pack(padx=20, pady=10)
 
+                ttk.Separator(face_win, orient="horizontal").pack(fill="x", padx=20, pady=5)
+
                 # Frame pour le nom
                 name_frame = ttk.Frame(face_win)
                 name_frame.pack(pady=10)
 
-                ttk.Label(name_frame, text="Nom:").pack(side=tk.LEFT, padx=5)
-                name_entry = ttk.Entry(name_frame)
+                ttk.Label(name_frame, text="Nom :").pack(side=tk.LEFT, padx=5)
+                name_entry = ttk.Entry(name_frame, bootstyle=SUCCESS)
                 name_entry.pack(side=tk.LEFT, padx=5)
                 name_entry.focus()
 
@@ -614,8 +637,8 @@ class FaceRecognitionApp:
                 btn_frame = ttk.Frame(face_win)
                 btn_frame.pack(pady=10)
 
-                ttk.Button(btn_frame, text="Enregistrer", command=save_name).pack(side=tk.LEFT, padx=5)
-                ttk.Button(btn_frame, text="Ignorer", command=skip).pack(side=tk.LEFT, padx=5)
+                ttk.Button(btn_frame, text="Enregistrer", command=save_name, bootstyle=SUCCESS).pack(side=tk.LEFT, padx=5)
+                ttk.Button(btn_frame, text="Ignorer", command=skip, bootstyle=(OUTLINE, SECONDARY)).pack(side=tk.LEFT, padx=5)
 
                 # Centrer la fenêtre
                 face_win.update_idletasks()
@@ -664,14 +687,27 @@ class FaceRecognitionApp:
         manage_win.transient(self.root)
         manage_win.grab_set()
 
-        ttk.Label(manage_win, text="Visages enregistrés :", font=("Arial", 12)).pack(pady=10)
+        ttk.Label(
+            manage_win,
+            text="Visages enregistrés",
+            font=("Helvetica", 13, "bold"),
+            bootstyle=PRIMARY,
+        ).pack(pady=10)
 
-        listbox = tk.Listbox(manage_win)
+        ttk.Separator(manage_win, orient="horizontal").pack(fill="x", padx=20, pady=5)
+
+        listbox = tk.Listbox(
+            manage_win,
+            font=("Helvetica", 11),
+            selectbackground="#d97706",
+            activestyle="none",
+            relief="flat",
+            bd=0,
+        )
         listbox.pack(fill="both", expand=True, padx=20)
 
-        # On charge les encodages depuis metadata.json
         try:
-            encodings = self.load_all_encodings()  # Ne pas modifier cette fonction
+            encodings = self.load_all_encodings()
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur de chargement des encodages : {e}")
             return
@@ -702,13 +738,20 @@ class FaceRecognitionApp:
             except Exception as e:
                 messagebox.showerror("Erreur", f"Une erreur est survenue lors de la suppression : {e}")
 
-        ttk.Button(manage_win, text="Supprimer", command=delete_selected).pack(pady=10)
+        ttk.Separator(manage_win, orient="horizontal").pack(fill="x", padx=20, pady=5)
+        ttk.Button(
+            manage_win,
+            text="Supprimer la sélection",
+            command=delete_selected,
+            bootstyle=DANGER,
+        ).pack(pady=10)
 
     def refresh_encoding_list(self, listbox):
         listbox.delete(0, tk.END)
         try:
             encodings = self.load_all_encodings()
-            self.cached_encodings = encodings
+            with self._encodings_lock:
+                self.cached_encodings = encodings
             for name in sorted(encodings.keys()):
                 listbox.insert(tk.END, name)
             self.update_target_selector()  # Mettre à jour le menu déroulant
@@ -739,12 +782,15 @@ class FaceRecognitionApp:
         """Joue une alarme sonore en boucle jusqu'a ce qu'elle soit arretee."""
         alarm_path = PROJECT_ROOT / "alarm" / "alarm-301729.mp3"
         if not alarm_path.exists():
+            logger.error("Fichier audio introuvable : %s", alarm_path)
             self.root.after(0, lambda: messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}"))
             return
 
-        pygame.mixer.init()
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
         pygame.mixer.music.load(str(alarm_path))
         pygame.mixer.music.play(loops=-1)
+        logger.info("Alarme déclenchée pour la cible '%s'.", self.target_person)
 
         self.alarm_running = True
         self.root.after(0, lambda: self.stop_alarm_button.config(state="normal"))
@@ -752,13 +798,14 @@ class FaceRecognitionApp:
     def stop_alarm(self):
         """Arrête l'alarme sonore immédiatement."""
         if self.alarm_running:
-            pygame.mixer.music.stop()  # Arrêter la lecture du son
+            pygame.mixer.music.stop()
             self.alarm_running = False
-            self.stop_alarm_button.config(state="disabled")  # Désactiver le bouton
+            self.stop_alarm_button.config(state="disabled")
+            logger.info("Alarme arrêtée manuellement.")
             messagebox.showinfo("Alarme", "L'alarme a été arrêtée.")
 
 def main():
-    root = tk.Tk()
+    root = ttk.Window(themename="solar")
     app = FaceRecognitionApp(root)
     root.mainloop()
 
