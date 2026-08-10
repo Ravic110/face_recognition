@@ -54,3 +54,6 @@ desktop.ini
 .env.*
 secrets.*
 .claude
+
+# Configuration locale (cle API generee)
+.config/
