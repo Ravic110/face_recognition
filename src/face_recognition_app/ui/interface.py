@@ -1,17 +1,17 @@
-# -*- coding: utf-8 -*-
+import logging
 import tkinter as tk
+from threading import Lock, Thread
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
-from threading import Thread, Lock
-import logging
+
 import cv2
-from PIL import Image, ImageTk
 import face_recognition
 import pygame
 import ttkbootstrap as ttk
+from PIL import Image, ImageTk
 from ttkbootstrap.constants import *
 
-from face_recognition_app.storage.config import PROJECT_ROOT, FACE_RECOGNITION_THRESHOLD
+from face_recognition_app.storage.config import FACE_RECOGNITION_THRESHOLD, PROJECT_ROOT
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,8 +19,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 from face_recognition_app.storage.encodings_store import (
-    load_encodings_map,
     delete_encoding as delete_stored_encoding,
+)
+from face_recognition_app.storage.encodings_store import (
+    load_encodings_map,
 )
 from face_recognition_app.ui import import_image
 
@@ -90,7 +92,7 @@ class FaceRecognitionApp:
         """
         encoded_faces = self.load_all_encodings()
         best_match = None
-        min_distance = float('inf')
+        min_distance = float("inf")
 
         for name, known_encoding in encoded_faces.items():
             face_distance = face_recognition.face_distance([known_encoding], face_encoding)[0]
@@ -109,7 +111,6 @@ class FaceRecognitionApp:
                 self.cached_encodings = self.load_all_encodings()
                 logger.info("Cache des encodages chargé (%d entrée(s))", len(self.cached_encodings))
             return self.cached_encodings
-
 
     def setup_ui(self):
         # Frame principale avec poids pour l'expansion
@@ -172,7 +173,7 @@ class FaceRecognitionApp:
         # Canvas redimensionnable
         self.canvas = tk.Canvas(
             self.main_frame,
-            bg='#2b2b2b',
+            bg="#2b2b2b",
             width=800,
             height=600,
             highlightthickness=0,
@@ -247,7 +248,7 @@ class FaceRecognitionApp:
         # Barre de progression
         self.progress = ttk.Progressbar(
             self.main_frame,
-            mode='indeterminate',
+            mode="indeterminate",
             bootstyle=INFO,
         )
         self.progress.grid(row=4, column=0, sticky="ew", pady=10)
@@ -291,8 +292,7 @@ class FaceRecognitionApp:
     def load_image(self):
         try:
             image_path = askopenfilename(
-                title="Sélectionnez une image",
-                filetypes=[("Images", "*.jpg;*.jpeg;*.png")]
+                title="Sélectionnez une image", filetypes=[("Images", "*.jpg;*.jpeg;*.png")]
             )
 
             if not image_path:
@@ -314,11 +314,13 @@ class FaceRecognitionApp:
             image_resized = import_image.resize_image_to_fit_screen(
                 self.current_image,
                 max_width=self.canvas.winfo_width(),
-                max_height=self.canvas.winfo_height()
+                max_height=self.canvas.winfo_height(),
             )
 
             self.face_locations = face_recognition.face_locations(image_resized)
-            self.face_encodings = face_recognition.face_encodings(image_resized, self.face_locations)
+            self.face_encodings = face_recognition.face_encodings(
+                image_resized, self.face_locations
+            )
 
             for i, encoding in enumerate(self.face_encodings):
                 exists, known_name = self.verify_face(encoding)
@@ -329,22 +331,37 @@ class FaceRecognitionApp:
                         # Personne traquée - Rouge
                         cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 0, 255), 2)
                         draw_bold_text(
-                            image_resized, f"{known_name}", (left, top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1
+                            image_resized,
+                            f"{known_name}",
+                            (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            (0, 0, 255),
+                            1,
                         )
                     else:
                         # Visage connu - Vert
                         cv2.rectangle(image_resized, (left, top), (right, bottom), (0, 255, 0), 2)
                         draw_bold_text(
-                            image_resized, f"{known_name}", (left, top - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                            image_resized,
+                            f"{known_name}",
+                            (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            (0, 255, 0),
+                            1,
                         )
                 else:
                     # Nouveau visage - Bleu
                     cv2.rectangle(image_resized, (left, top), (right, bottom), (255, 0, 0), 2)
                     draw_bold_text(
-                        image_resized, f"inconnu {i + 1}", (left, top - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1
+                        image_resized,
+                        f"inconnu {i + 1}",
+                        (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 0, 0),
+                        1,
                     )
 
             self.root.after(0, self.update_display, image_resized)
@@ -373,7 +390,9 @@ class FaceRecognitionApp:
         if self.face_locations:
             self.info_label.config(text=f"{len(self.face_locations)} visage(s) détecté(s)")
             self.face_selector.config(state="readonly")
-            self.face_selector["values"] = [f"Visage {i + 1}" for i in range(len(self.face_locations))]
+            self.face_selector["values"] = [
+                f"Visage {i + 1}" for i in range(len(self.face_locations))
+            ]
             self.face_var.set("")
             self.select_button.config(state="normal")
         else:
@@ -416,7 +435,9 @@ class FaceRecognitionApp:
             return
 
         if name in self.load_all_encodings():
-            messagebox.showwarning("Attention", f"Le nom '{name}' existe déjà. Veuillez choisir un autre nom.")
+            messagebox.showwarning(
+                "Attention", f"Le nom '{name}' existe déjà. Veuillez choisir un autre nom."
+            )
             return
 
         try:
@@ -447,7 +468,9 @@ class FaceRecognitionApp:
 
         # Actualise les options du menu déroulant
         if self.face_locations:
-            self.face_selector["values"] = [f"Visage {i + 1}" for i in range(len(self.face_locations))]
+            self.face_selector["values"] = [
+                f"Visage {i + 1}" for i in range(len(self.face_locations))
+            ]
         else:
             self.face_selector["values"] = []
             self.face_selector.config(state="disabled")
@@ -493,12 +516,16 @@ class FaceRecognitionApp:
             face_encodings = face_recognition.face_encodings(small_frame, face_locations)
             known_encodings = self.get_cached_encodings()
 
-            for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+            for (top, right, bottom, left), face_encoding in zip(
+                face_locations, face_encodings, strict=False
+            ):
                 recognized = False
                 recognized_name = "Inconnu"
 
                 for name, known_encoding in known_encodings.items():
-                    face_distance = face_recognition.face_distance([known_encoding], face_encoding)[0]
+                    face_distance = face_recognition.face_distance([known_encoding], face_encoding)[
+                        0
+                    ]
                     if face_distance < FACE_RECOGNITION_THRESHOLD:
                         recognized = True
                         recognized_name = name
@@ -509,7 +536,15 @@ class FaceRecognitionApp:
                 if recognized and recognized_name == self.target_person:
                     color = (0, 0, 255)  # Rouge pour la personne traquée
                     cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-                    draw_bold_text(frame, recognized_name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                    draw_bold_text(
+                        frame,
+                        recognized_name,
+                        (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color,
+                        1,
+                    )
 
                     if not hasattr(self, "alarm_triggered") or not self.alarm_triggered:
                         self.alarm_triggered = True
@@ -519,19 +554,33 @@ class FaceRecognitionApp:
                 elif recognized:
                     color = (0, 255, 0)  # Vert pour les visages connus
                     cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-                    draw_bold_text(frame, recognized_name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                    draw_bold_text(
+                        frame,
+                        recognized_name,
+                        (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color,
+                        1,
+                    )
 
                 else:
                     color = (255, 0, 0)  # Bleu pour les visages inconnus
                     cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-                    draw_bold_text(frame, "Inconnu", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                    draw_bold_text(
+                        frame, "Inconnu", (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
+                    )
 
         img = Image.fromarray(frame)
         imgtk = ImageTk.PhotoImage(image=img)
         self.current_image_tk = imgtk
         self.canvas.delete("all")
-        self.canvas.create_image(self.canvas.winfo_width() // 2, self.canvas.winfo_height() // 2, anchor=tk.CENTER,
-                                 image=imgtk)
+        self.canvas.create_image(
+            self.canvas.winfo_width() // 2,
+            self.canvas.winfo_height() // 2,
+            anchor=tk.CENTER,
+            image=imgtk,
+        )
 
         self.root.after(30, self.update_frame)
 
@@ -570,14 +619,21 @@ class FaceRecognitionApp:
             temp_faces = []
 
             # Pour chaque visage détecté
-            for i, (face_location, face_encoding) in enumerate(zip(face_locations, face_encodings)):
+            for i, (face_location, face_encoding) in enumerate(
+                zip(face_locations, face_encodings, strict=False)
+            ):
                 top, right, bottom, left = face_location
 
                 # Vérifier si le visage existe déjà
                 exists, known_name = self.verify_face(face_encoding)
 
                 # Extraire le visage (à taille réelle)
-                top, right, bottom, left = top * 2, right * 2, bottom * 2, left * 2  # Convertir à la taille réelle
+                top, right, bottom, left = (
+                    top * 2,
+                    right * 2,
+                    bottom * 2,
+                    left * 2,
+                )  # Convertir à la taille réelle
                 face_crop = frame_rgb[top:bottom, left:right]
 
                 # Si le visage n'existe pas, l'ajouter à la liste temporaire
@@ -586,7 +642,9 @@ class FaceRecognitionApp:
 
             # Si aucun nouveau visage n'a été trouvé
             if not temp_faces:
-                messagebox.showinfo("Information", "Tous les visages détectés sont déjà enregistrés")
+                messagebox.showinfo(
+                    "Information", "Tous les visages détectés sont déjà enregistrés"
+                )
                 self.capture_button.config(state="normal")
                 return
 
@@ -620,7 +678,9 @@ class FaceRecognitionApp:
                 name_entry.focus()
 
                 # Variables pour stocker le résultat
-                result_name = [None]  # Utiliser une liste pour permettre la modification dans la fonction interne
+                result_name = [
+                    None
+                ]  # Utiliser une liste pour permettre la modification dans la fonction interne
 
                 def save_name():
                     name = name_entry.get().strip()
@@ -628,7 +688,9 @@ class FaceRecognitionApp:
                         result_name[0] = name
                         face_win.destroy()
                     else:
-                        messagebox.showwarning("Attention", "Veuillez entrer un nom", parent=face_win)
+                        messagebox.showwarning(
+                            "Attention", "Veuillez entrer un nom", parent=face_win
+                        )
 
                 def skip():
                     face_win.destroy()
@@ -637,8 +699,12 @@ class FaceRecognitionApp:
                 btn_frame = ttk.Frame(face_win)
                 btn_frame.pack(pady=10)
 
-                ttk.Button(btn_frame, text="Enregistrer", command=save_name, bootstyle=SUCCESS).pack(side=tk.LEFT, padx=5)
-                ttk.Button(btn_frame, text="Ignorer", command=skip, bootstyle=(OUTLINE, SECONDARY)).pack(side=tk.LEFT, padx=5)
+                ttk.Button(
+                    btn_frame, text="Enregistrer", command=save_name, bootstyle=SUCCESS
+                ).pack(side=tk.LEFT, padx=5)
+                ttk.Button(
+                    btn_frame, text="Ignorer", command=skip, bootstyle=(OUTLINE, SECONDARY)
+                ).pack(side=tk.LEFT, padx=5)
 
                 # Centrer la fenêtre
                 face_win.update_idletasks()
@@ -655,7 +721,9 @@ class FaceRecognitionApp:
                 if result_name[0]:
                     try:
                         import_image.save_face_encoding(result_name[0], encoding)
-                        messagebox.showinfo("Succès", f"Visage de {result_name[0]} enregistré avec succès")
+                        messagebox.showinfo(
+                            "Succès", f"Visage de {result_name[0]} enregistré avec succès"
+                        )
                     except Exception as e:
                         messagebox.showerror("Erreur", str(e))
 
@@ -722,7 +790,9 @@ class FaceRecognitionApp:
                 return
 
             name = listbox.get(selected[0])
-            confirm = messagebox.askyesno("Confirmation", f"Etes-vous sur de vouloir supprimer '{name}' ?")
+            confirm = messagebox.askyesno(
+                "Confirmation", f"Etes-vous sur de vouloir supprimer '{name}' ?"
+            )
             if not confirm:
                 return
 
@@ -736,7 +806,9 @@ class FaceRecognitionApp:
                 messagebox.showinfo("Supprime", f"'{name}' a ete supprime.")
                 self.refresh_encoding_list(listbox)
             except Exception as e:
-                messagebox.showerror("Erreur", f"Une erreur est survenue lors de la suppression : {e}")
+                messagebox.showerror(
+                    "Erreur", f"Une erreur est survenue lors de la suppression : {e}"
+                )
 
         ttk.Separator(manage_win, orient="horizontal").pack(fill="x", padx=20, pady=5)
         ttk.Button(
@@ -783,7 +855,10 @@ class FaceRecognitionApp:
         alarm_path = PROJECT_ROOT / "alarm" / "alarm-301729.mp3"
         if not alarm_path.exists():
             logger.error("Fichier audio introuvable : %s", alarm_path)
-            self.root.after(0, lambda: messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}"))
+            self.root.after(
+                0,
+                lambda: messagebox.showerror("Erreur", f"Fichier audio introuvable : {alarm_path}"),
+            )
             return
 
         if not pygame.mixer.get_init():
@@ -803,6 +878,7 @@ class FaceRecognitionApp:
             self.stop_alarm_button.config(state="disabled")
             logger.info("Alarme arrêtée manuellement.")
             messagebox.showinfo("Alarme", "L'alarme a été arrêtée.")
+
 
 def main():
     root = ttk.Window(themename="solar")

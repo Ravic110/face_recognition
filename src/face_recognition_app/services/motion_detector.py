@@ -14,7 +14,6 @@ que lorsqu'un mouvement est détecté → économie CPU significative.
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -36,7 +35,7 @@ class MotionDetector:
         self,
         sensitivity: int = 500,
         min_area_ratio: float = 0.002,
-        roi: Optional[Tuple[int, int, int, int]] = None,
+        roi: tuple[int, int, int, int] | None = None,
     ) -> None:
         self._sensitivity = sensitivity
         self._min_area_ratio = min_area_ratio
@@ -51,7 +50,7 @@ class MotionDetector:
 
     # ── API publique ──────────────────────────────────────────────────────────
 
-    def update(self, frame: np.ndarray) -> Tuple[bool, float]:
+    def update(self, frame: np.ndarray) -> tuple[bool, float]:
         """
         Analyse une frame BGR et retourne (mouvement_détecté, score).
 
@@ -86,17 +85,19 @@ class MotionDetector:
         gray = cv2.GaussianBlur(cv2.cvtColor(region, cv2.COLOR_BGR2GRAY), (21, 21), 0)
         return self._subtractor.apply(gray)
 
-    def set_roi(self, roi: Optional[Tuple[int, int, int, int]]) -> None:
+    def set_roi(self, roi: tuple[int, int, int, int] | None) -> None:
         """Met à jour la zone d'intérêt (x, y, w, h)."""
         self._roi = roi
         # Réinitialiser le fond lors du changement de ROI
         self._subtractor = cv2.createBackgroundSubtractorMOG2(
-            history=300, varThreshold=50, detectShadows=False)
+            history=300, varThreshold=50, detectShadows=False
+        )
 
     def reset(self) -> None:
         """Réinitialise le modèle de fond (ex. après un changement de scène)."""
         self._subtractor = cv2.createBackgroundSubtractorMOG2(
-            history=300, varThreshold=50, detectShadows=False)
+            history=300, varThreshold=50, detectShadows=False
+        )
         self._frame_count = 0
 
     # ── Utilitaire ROI ────────────────────────────────────────────────────────

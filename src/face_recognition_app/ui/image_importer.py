@@ -17,7 +17,6 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import List, Optional, Tuple
 
 import cv2
 import face_recognition
@@ -31,7 +30,12 @@ logger = logging.getLogger(__name__)
 
 # Extensions image acceptées
 IMAGE_EXTENSIONS = (
-    "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tiff", "*.webp",
+    "*.jpg",
+    "*.jpeg",
+    "*.png",
+    "*.bmp",
+    "*.tiff",
+    "*.webp",
 )
 
 
@@ -50,16 +54,16 @@ class ImageImporterApp(tk.Toplevel):
         self.minsize(800, 560)
 
         # État
-        self._image_paths: List[Path] = []
+        self._image_paths: list[Path] = []
         self._current_idx: int = 0
-        self._current_image: Optional[np.ndarray] = None   # BGR original
-        self._face_locations: List[Tuple] = []
-        self._face_encodings: List[np.ndarray] = []
+        self._current_image: np.ndarray | None = None  # BGR original
+        self._face_locations: list[tuple] = []
+        self._face_encodings: list[np.ndarray] = []
         self._selected_face: int = 0
-        self._photo_ref: Optional[ImageTk.PhotoImage] = None
+        self._photo_ref: ImageTk.PhotoImage | None = None
         self._processing = False
         # Initialisé avant _build_ui() pour éviter l'AttributeError si _build_ui() échoue
-        self._progress: Optional[ttk.Progressbar] = None
+        self._progress: ttk.Progressbar | None = None
 
         self._build_ui()
 
@@ -70,17 +74,20 @@ class ImageImporterApp(tk.Toplevel):
         top = tk.Frame(self, bg="#2b2b2b", padx=8, pady=6)
         top.pack(fill=tk.X)
 
-        tk.Label(top, text="Import d'images", bg="#2b2b2b", fg="white",
-                 font=("Helvetica", 13, "bold")).pack(side=tk.LEFT, padx=6)
+        tk.Label(
+            top, text="Import d'images", bg="#2b2b2b", fg="white", font=("Helvetica", 13, "bold")
+        ).pack(side=tk.LEFT, padx=6)
 
         ttk.Button(top, text="Sélectionner des images", command=self._browse_images).pack(
-            side=tk.LEFT, padx=8)
+            side=tk.LEFT, padx=8
+        )
         ttk.Button(top, text="◀ Précédente", command=self._prev_image).pack(side=tk.LEFT, padx=4)
         ttk.Button(top, text="Suivante ▶", command=self._next_image).pack(side=tk.LEFT, padx=4)
 
         self._counter_var = tk.StringVar(value="–")
-        tk.Label(top, textvariable=self._counter_var, bg="#2b2b2b", fg="#aaaaaa",
-                 font=("Helvetica", 10)).pack(side=tk.LEFT, padx=8)
+        tk.Label(
+            top, textvariable=self._counter_var, bg="#2b2b2b", fg="#aaaaaa", font=("Helvetica", 10)
+        ).pack(side=tk.LEFT, padx=8)
 
         # ── Corps principal
         body = tk.PanedWindow(self, orient=tk.HORIZONTAL, sashwidth=5)
@@ -90,15 +97,22 @@ class ImageImporterApp(tk.Toplevel):
         left = tk.Frame(body, bg="#1a1a1a")
         body.add(left, minsize=400)
 
-        self._canvas = tk.Canvas(left, bg="#1a1a1a", cursor="crosshair",
-                                  width=self.PREVIEW_W, height=self.PREVIEW_H)
+        self._canvas = tk.Canvas(
+            left, bg="#1a1a1a", cursor="crosshair", width=self.PREVIEW_W, height=self.PREVIEW_H
+        )
         self._canvas.pack(fill=tk.BOTH, expand=True)
         self._canvas.bind("<Button-1>", self._on_canvas_click)
 
         # Barre de statut image
         self._img_status = tk.StringVar(value="Sélectionnez des images pour commencer.")
-        tk.Label(left, textvariable=self._img_status, bg="#111", fg="#ccc",
-                 font=("Helvetica", 9), anchor=tk.W).pack(fill=tk.X, padx=4, pady=2)
+        tk.Label(
+            left,
+            textvariable=self._img_status,
+            bg="#111",
+            fg="#ccc",
+            font=("Helvetica", 9),
+            anchor=tk.W,
+        ).pack(fill=tk.X, padx=4, pady=2)
 
         # Panneau droit : sélection et enregistrement
         right = tk.Frame(body, padx=10, pady=8)
@@ -110,8 +124,9 @@ class ImageImporterApp(tk.Toplevel):
         list_frame = tk.Frame(right, relief=tk.GROOVE, bd=1)
         list_frame.pack(fill=tk.X, pady=6)
 
-        self._face_listbox = tk.Listbox(list_frame, height=8, selectmode=tk.SINGLE,
-                                         activestyle="dotbox")
+        self._face_listbox = tk.Listbox(
+            list_frame, height=8, selectmode=tk.SINGLE, activestyle="dotbox"
+        )
         self._face_listbox.pack(fill=tk.X)
         self._face_listbox.bind("<<ListboxSelect>>", self._on_face_select)
 
@@ -119,8 +134,9 @@ class ImageImporterApp(tk.Toplevel):
         info_lf = ttk.LabelFrame(right, text="Informations")
         info_lf.pack(fill=tk.X, pady=4)
         self._info_var = tk.StringVar(value="–")
-        tk.Label(info_lf, textvariable=self._info_var, justify=tk.LEFT,
-                 font=("Helvetica", 9), fg="gray").pack(anchor=tk.W, padx=6, pady=4)
+        tk.Label(
+            info_lf, textvariable=self._info_var, justify=tk.LEFT, font=("Helvetica", 9), fg="gray"
+        ).pack(anchor=tk.W, padx=6, pady=4)
 
         # Aperçu du visage sélectionné
         self._face_preview_label = tk.Label(right, bg="#111", width=10, height=5)
@@ -134,15 +150,18 @@ class ImageImporterApp(tk.Toplevel):
 
         # Bouton enregistrer
         ttk.Button(right, text="Enregistrer le visage", command=self._save_face).pack(
-            pady=10, fill=tk.X)
+            pady=10, fill=tk.X
+        )
 
         # Journal de cette session
         tk.Label(right, text="Journal de session", font=("Helvetica", 10, "bold")).pack(
-            anchor=tk.W, pady=(10, 2))
+            anchor=tk.W, pady=(10, 2)
+        )
         log_frame = tk.Frame(right, relief=tk.GROOVE, bd=1)
         log_frame.pack(fill=tk.BOTH, expand=True)
-        self._log_text = tk.Text(log_frame, height=6, state=tk.DISABLED,
-                                  font=("Courier", 8), bg="#f5f5f5")
+        self._log_text = tk.Text(
+            log_frame, height=6, state=tk.DISABLED, font=("Courier", 8), bg="#f5f5f5"
+        )
         log_scroll = ttk.Scrollbar(log_frame, command=self._log_text.yview)
         self._log_text.configure(yscrollcommand=log_scroll.set)
         self._log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -221,12 +240,17 @@ class ImageImporterApp(tk.Toplevel):
             self._schedule(lambda: self._display_results(img_bgr, locations, encodings))
         except Exception as exc:
             logger.exception("Erreur analyse image : %s", exc)
-            self._schedule(lambda: self._img_status.set(f"Erreur : {exc}"))
+            # `exc` disparaît à la sortie du bloc except ; la lambda étant différée
+            # par after(), il faut capturer le message maintenant.
+            message = f"Erreur : {exc}"
+            self._schedule(lambda: self._img_status.set(message))
         finally:
+
             def _cleanup():
                 if self._progress is not None:
                     self._progress.stop()
                 self._processing = False
+
             self._schedule(_cleanup)
 
     def _display_results(
@@ -266,8 +290,9 @@ class ImageImporterApp(tk.Toplevel):
             color = (0, 200, 0) if i == self._selected_face else (200, 200, 200)
             thickness = 3 if i == self._selected_face else 1
             cv2.rectangle(annotated, (left, top), (right, bottom), color, thickness)
-            cv2.putText(annotated, str(i + 1), (left + 4, top + 18),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+            cv2.putText(
+                annotated, str(i + 1), (left + 4, top + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2
+            )
 
         # Adapter au canvas
         cw = self._canvas.winfo_width() or self.PREVIEW_W
@@ -333,7 +358,7 @@ class ImageImporterApp(tk.Toplevel):
         dup_str = "Oui ⚠" if dup else "Non ✓"
 
         self._info_var.set(
-            f"Taille : {right-left}×{bottom-top} px\n"
+            f"Taille : {right - left}×{bottom - top} px\n"
             f"Zone image : {area_pct:.1f}%\n"
             f"Netteté : {sharpness:.0f}\n"
             f"Déjà dans la base : {dup_str}"
@@ -371,7 +396,9 @@ class ImageImporterApp(tk.Toplevel):
 
         idx = self._selected_face
         if idx >= len(self._face_encodings):
-            messagebox.showwarning("Sélection", "Sélectionnez un visage dans la liste.", parent=self)
+            messagebox.showwarning(
+                "Sélection", "Sélectionnez un visage dans la liste.", parent=self
+            )
             return
 
         enc = self._face_encodings[idx]

@@ -17,7 +17,6 @@ import time
 import uuid
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -27,13 +26,14 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class CameraConfig:
     """Paramètres persistables d'une caméra."""
 
     name: str
-    source_type: str          # 'webcam' | 'ip'
-    source: str | int         # index (webcam) ou URL (IP)
+    source_type: str  # 'webcam' | 'ip'
+    source: str | int  # index (webcam) ou URL (IP)
     enabled: bool = True
     uid: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
 
@@ -42,7 +42,7 @@ class CameraConfig:
     height: int = 480
 
     # Zone d'intérêt ROI (x, y, w, h) en pixels, None = toute l'image
-    roi: Optional[Tuple[int, int, int, int]] = None
+    roi: tuple[int, int, int, int] | None = None
 
     # Modèle de détection : "hog" (CPU) | "cnn" (GPU/plus précis)
     detection_model: str = "hog"
@@ -61,7 +61,7 @@ class CameraConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CameraConfig":
+    def from_dict(cls, data: dict) -> CameraConfig:
         roi_raw = data.get("roi")
         return cls(
             uid=data.get("uid", uuid.uuid4().hex[:8]),
@@ -77,6 +77,7 @@ class CameraConfig:
 
 
 # ── Classe de base ────────────────────────────────────────────────────────────
+
 
 class CameraSource(ABC):
     """
@@ -96,11 +97,11 @@ class CameraSource(ABC):
 
     def __init__(self, config: CameraConfig) -> None:
         self.config = config
-        self._cap: Optional[cv2.VideoCapture] = None
+        self._cap: cv2.VideoCapture | None = None
         self._lock = threading.Lock()
         self._running = False
-        self._latest_frame: Optional[np.ndarray] = None
-        self._thread: Optional[threading.Thread] = None
+        self._latest_frame: np.ndarray | None = None
+        self._thread: threading.Thread | None = None
         self._connected = False
         self._reconnect_delay = self.RECONNECT_DELAY_MIN
         self._reconnect_count = 0
@@ -155,7 +156,7 @@ class CameraSource(ABC):
 
     # ── Lecture de frame ──────────────────────────────────────────────────────
 
-    def get_frame(self) -> Optional[np.ndarray]:
+    def get_frame(self) -> np.ndarray | None:
         """Retourne la dernière frame disponible (thread-safe), ou None."""
         with self._lock:
             return self._latest_frame.copy() if self._latest_frame is not None else None
@@ -195,7 +196,9 @@ class CameraSource(ABC):
                     self._reconnect_count += 1
                     logger.warning(
                         "[%s] Perte de flux (tentative %d), nouvelle connexion dans %.0fs…",
-                        self.name, self._reconnect_count, self._reconnect_delay,
+                        self.name,
+                        self._reconnect_count,
+                        self._reconnect_delay,
                     )
                     time.sleep(self._reconnect_delay)
                     # Backoff exponentiel plafonné
@@ -210,6 +213,7 @@ class CameraSource(ABC):
 
 # ── Implémentations concrètes ────────────────────────────────────────────────
 
+
 class WebcamSource(CameraSource):
     """
     Caméra locale (USB ou intégrée).
@@ -219,7 +223,11 @@ class WebcamSource(CameraSource):
 
     def _open_capture(self) -> bool:
         # Forcer l'index entier
-        source = int(self.config.source) if not isinstance(self.config.source, int) else self.config.source
+        source = (
+            int(self.config.source)
+            if not isinstance(self.config.source, int)
+            else self.config.source
+        )
         self.config.source = source
         return super()._open_capture()
 
@@ -233,10 +241,12 @@ class IPCameraSource(CameraSource):
       http://192.168.1.50:8080/video        (Android IP Webcam)
       http://192.168.1.50:8080/mjpeg        (variante MJPEG)
     """
+
     pass
 
 
 # ── Fabrique ─────────────────────────────────────────────────────────────────
+
 
 def create_camera_source(config: CameraConfig) -> CameraSource:
     """Instancie la bonne sous-classe selon config.source_type."""

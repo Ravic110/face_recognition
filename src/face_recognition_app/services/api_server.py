@@ -18,19 +18,18 @@ Le serveur tourne dans un thread daemon et s'arrête avec l'application.
 
 from __future__ import annotations
 
-import base64
 import logging
 import threading
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING
 
 import cv2
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from ..storage.event_store import EventStore
     from .camera_manager import CameraManager
     from .surveillance_engine import SurveillanceEngine
-    from ..storage.event_store import EventStore
     from .video_recorder import VideoRecorder
 
 
@@ -49,22 +48,22 @@ class ApiServer:
 
     def __init__(
         self,
-        camera_manager: "CameraManager",
-        engine: "SurveillanceEngine",
-        event_store: "EventStore",
-        recorder: "VideoRecorder",
+        camera_manager: CameraManager,
+        engine: SurveillanceEngine,
+        event_store: EventStore,
+        recorder: VideoRecorder,
     ) -> None:
         self._mgr = camera_manager
         self._engine = engine
         self._store = event_store
         self._recorder = recorder
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._app = self._build_app()
 
     # ── Construction Flask ────────────────────────────────────────────────────
 
     def _build_app(self):
-        from flask import Flask, jsonify, request, Response
+        from flask import Flask, Response, jsonify, request
 
         app = Flask(__name__)
         app.config["JSON_SORT_KEYS"] = False
@@ -77,21 +76,25 @@ class ApiServer:
 
         @app.route("/api/status")
         def status():
-            return jsonify({
-                "version": self.VERSION,
-                "surveillance_active": self._engine._running,
-                "cameras_total": len(self._mgr.list_configs()),
-                "cameras_running": len(self._mgr.get_all_sources()),
-            })
+            return jsonify(
+                {
+                    "version": self.VERSION,
+                    "surveillance_active": self._engine._running,
+                    "cameras_total": len(self._mgr.list_configs()),
+                    "cameras_running": len(self._mgr.get_all_sources()),
+                }
+            )
 
         # ── Caméras ───────────────────────────────────────────────────────────
 
         @app.route("/api/cameras")
         def cameras():
-            return jsonify([
-                {**c.to_dict(), "running": self._mgr.is_running(c.uid)}
-                for c in self._mgr.list_configs()
-            ])
+            return jsonify(
+                [
+                    {**c.to_dict(), "running": self._mgr.is_running(c.uid)}
+                    for c in self._mgr.list_configs()
+                ]
+            )
 
         @app.route("/api/snapshot/<uid>")
         def snapshot(uid: str):
@@ -118,17 +121,19 @@ class ApiServer:
             else:
                 evts = self._store.get_recent(limit)
 
-            return jsonify([
-                {
-                    "id": e.id,
-                    "datetime": e.dt.strftime("%Y-%m-%d %H:%M:%S"),
-                    "camera_uid": e.camera_uid,
-                    "camera_name": e.camera_name,
-                    "faces": e.faces,
-                    "has_snapshot": e.snapshot_b64 is not None,
-                }
-                for e in evts
-            ])
+            return jsonify(
+                [
+                    {
+                        "id": e.id,
+                        "datetime": e.dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "camera_uid": e.camera_uid,
+                        "camera_name": e.camera_name,
+                        "faces": e.faces,
+                        "has_snapshot": e.snapshot_b64 is not None,
+                    }
+                    for e in evts
+                ]
+            )
 
         @app.route("/api/events/<int:event_id>")
         def event_detail(event_id: int):
@@ -150,10 +155,9 @@ class ApiServer:
         @app.route("/api/faces")
         def faces():
             from ..storage.encodings_store import load_metadata
+
             meta = load_metadata()
-            return jsonify([
-                {"uid": uid, **info} for uid, info in meta.items()
-            ])
+            return jsonify([{"uid": uid, **info} for uid, info in meta.items()])
 
         # ── Clips ─────────────────────────────────────────────────────────────
 

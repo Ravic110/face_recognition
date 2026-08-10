@@ -1,8 +1,9 @@
 import tkinter as tk
+
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 
-from face_recognition_app.ui import interface, import_image, video_importer
+from face_recognition_app.ui import import_image, interface, video_importer
 
 
 def launch_surveillance_dashboard(root):
@@ -13,6 +14,7 @@ def launch_surveillance_dashboard(root):
     Quand le dashboard se ferme, il détruit le root, ce qui termine l'app.
     """
     from face_recognition_app.ui.surveillance_dashboard import SurveillanceDashboard
+
     root.withdraw()
     SurveillanceDashboard(root)
 
@@ -36,6 +38,7 @@ def launch_video_importer(root):
 def launch_image_importer(root):
     """Lance le module d'import d'images avec interface graphique."""
     from face_recognition_app.ui.image_importer import ImageImporterApp
+
     ImageImporterApp(root)
 
 
@@ -75,13 +78,24 @@ def main():
 
     buttons = [
         # ── Nouveau mode principal ──────────────────────────────────────────
-        ("Tableau de bord Surveillance (multi-caméras)",
-         lambda: launch_surveillance_dashboard(root), SUCCESS),
+        (
+            "Tableau de bord Surveillance (multi-caméras)",
+            lambda: launch_surveillance_dashboard(root),
+            SUCCESS,
+        ),
         # ── Modules existants ───────────────────────────────────────────────
         ("Reconnaissance faciale (image)", lambda: launch_image_interface(root), PRIMARY),
-        ("Reconnaissance en temps réel (Webcam)", lambda: launch_realtime_recognition(root), PRIMARY),
+        (
+            "Reconnaissance en temps réel (Webcam)",
+            lambda: launch_realtime_recognition(root),
+            PRIMARY,
+        ),
         ("Importer une vidéo", lambda: launch_video_importer(root), INFO),
-        ("Importer des images (enregistrer des visages)", lambda: launch_image_importer(root), INFO),
+        (
+            "Importer des images (enregistrer des visages)",
+            lambda: launch_image_importer(root),
+            INFO,
+        ),
         ("Quitter", root.destroy, DANGER),
     ]
 

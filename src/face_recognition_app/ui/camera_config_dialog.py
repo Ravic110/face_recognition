@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Optional
 
 from ..services.camera_source import CameraConfig
 
@@ -35,14 +34,14 @@ class CameraConfigDialog(tk.Toplevel):
         self,
         parent: tk.Widget,
         title: str = "Configuration de la caméra",
-        config: Optional[CameraConfig] = None,   # None = création, sinon édition
+        config: CameraConfig | None = None,  # None = création, sinon édition
     ) -> None:
         super().__init__(parent)
         self.title(title)
         self.resizable(False, False)
-        self.grab_set()           # modal
+        self.grab_set()  # modal
 
-        self.result: Optional[CameraConfig] = None
+        self.result: CameraConfig | None = None
         self._existing = config
         self._type_var = tk.StringVar(value="webcam" if not config else config.source_type)
 
@@ -68,7 +67,8 @@ class CameraConfigDialog(tk.Toplevel):
         tk.Label(
             header,
             text="Ajouter / Modifier une caméra",
-            bg="#2b2b2b", fg="white",
+            bg="#2b2b2b",
+            fg="white",
             font=("Helvetica", 13, "bold"),
             pady=10,
         ).pack()
@@ -79,19 +79,27 @@ class CameraConfigDialog(tk.Toplevel):
         # Nom
         tk.Label(form, text="Nom de la caméra :").grid(row=0, column=0, sticky=tk.W, **pad)
         self._name_var = tk.StringVar()
-        ttk.Entry(form, textvariable=self._name_var, width=34).grid(row=0, column=1, sticky=tk.EW, **pad)
+        ttk.Entry(form, textvariable=self._name_var, width=34).grid(
+            row=0, column=1, sticky=tk.EW, **pad
+        )
 
         # Type
         tk.Label(form, text="Type :").grid(row=1, column=0, sticky=tk.W, **pad)
         type_frame = tk.Frame(form)
         type_frame.grid(row=1, column=1, sticky=tk.W, **pad)
         ttk.Radiobutton(
-            type_frame, text="Webcam locale", variable=self._type_var,
-            value="webcam", command=self._on_type_change,
+            type_frame,
+            text="Webcam locale",
+            variable=self._type_var,
+            value="webcam",
+            command=self._on_type_change,
         ).pack(side=tk.LEFT, padx=(0, 12))
         ttk.Radiobutton(
-            type_frame, text="Caméra IP / Smartphone", variable=self._type_var,
-            value="ip", command=self._on_type_change,
+            type_frame,
+            text="Caméra IP / Smartphone",
+            variable=self._type_var,
+            value="ip",
+            command=self._on_type_change,
         ).pack(side=tk.LEFT)
 
         # Source (index ou URL)
@@ -103,8 +111,12 @@ class CameraConfigDialog(tk.Toplevel):
         # Aide contextuelle
         self._hint_var = tk.StringVar()
         tk.Label(
-            form, textvariable=self._hint_var,
-            fg="gray", wraplength=280, justify=tk.LEFT, font=("Helvetica", 9),
+            form,
+            textvariable=self._hint_var,
+            fg="gray",
+            wraplength=280,
+            justify=tk.LEFT,
+            font=("Helvetica", 9),
         ).grid(row=3, column=1, sticky=tk.W, padx=12, pady=(0, 6))
 
         # Résolution
@@ -122,23 +134,29 @@ class CameraConfigDialog(tk.Toplevel):
         self._model_var = tk.StringVar(value="hog")
         model_frame = tk.Frame(form)
         model_frame.grid(row=5, column=1, sticky=tk.W, **pad)
-        ttk.Radiobutton(model_frame, text="HOG (CPU, rapide)", variable=self._model_var,
-                        value="hog").pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Radiobutton(model_frame, text="CNN (GPU, précis)", variable=self._model_var,
-                        value="cnn").pack(side=tk.LEFT)
+        ttk.Radiobutton(
+            model_frame, text="HOG (CPU, rapide)", variable=self._model_var, value="hog"
+        ).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Radiobutton(
+            model_frame, text="CNN (GPU, précis)", variable=self._model_var, value="cnn"
+        ).pack(side=tk.LEFT)
 
         # Zone d'intérêt ROI
         roi_lf = ttk.LabelFrame(form, text="Zone d'intérêt (ROI) — optionnel")
         roi_lf.grid(row=6, column=0, columnspan=2, sticky=tk.EW, padx=12, pady=6)
 
-        tk.Label(roi_lf, text="Laisser vide pour analyser toute l'image.",
-                 fg="gray", font=("Helvetica", 8)).grid(row=0, column=0, columnspan=8,
-                                                         sticky=tk.W, padx=4)
+        tk.Label(
+            roi_lf,
+            text="Laisser vide pour analyser toute l'image.",
+            fg="gray",
+            font=("Helvetica", 8),
+        ).grid(row=0, column=0, columnspan=8, sticky=tk.W, padx=4)
         self._roi_vars = {k: tk.StringVar(value="") for k in ("x", "y", "w", "h")}
         for i, (lbl, key) in enumerate([("X", "x"), ("Y", "y"), ("L", "w"), ("H", "h")]):
             tk.Label(roi_lf, text=f"{lbl}:").grid(row=1, column=i * 2, padx=(6 if i == 0 else 2, 0))
             ttk.Entry(roi_lf, textvariable=self._roi_vars[key], width=6).grid(
-                row=1, column=i * 2 + 1, padx=(0, 4), pady=4)
+                row=1, column=i * 2 + 1, padx=(0, 4), pady=4
+            )
 
         # Activée
         self._enabled_var = tk.BooleanVar(value=True)
@@ -211,7 +229,9 @@ class CameraConfigDialog(tk.Toplevel):
             width = int(self._width_var.get())
             height = int(self._height_var.get())
         except ValueError:
-            messagebox.showerror("Erreur", "La résolution doit être en pixels entiers.", parent=self)
+            messagebox.showerror(
+                "Erreur", "La résolution doit être en pixels entiers.", parent=self
+            )
             return
 
         # ROI (optionnelle)
@@ -223,9 +243,12 @@ class CameraConfigDialog(tk.Toplevel):
                 if len(roi) != 4 or any(v < 0 for v in roi):
                     raise ValueError
             except (ValueError, TypeError):
-                messagebox.showerror("Erreur",
-                                     "ROI invalide. Remplissez les 4 champs X, Y, Largeur, Hauteur "
-                                     "(entiers positifs) ou laissez-les vides.", parent=self)
+                messagebox.showerror(
+                    "Erreur",
+                    "ROI invalide. Remplissez les 4 champs X, Y, Largeur, Hauteur "
+                    "(entiers positifs) ou laissez-les vides.",
+                    parent=self,
+                )
                 return
 
         uid = self._existing.uid if self._existing else None

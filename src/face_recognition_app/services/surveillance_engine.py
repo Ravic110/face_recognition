@@ -19,8 +19,8 @@ import logging
 import queue
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import cv2
 import face_recognition
@@ -36,9 +36,10 @@ logger = logging.getLogger(__name__)
 
 # ── Structures de données ─────────────────────────────────────────────────────
 
+
 @dataclass
 class DetectedFace:
-    location: Tuple[int, int, int, int]
+    location: tuple[int, int, int, int]
     name: str
     confidence: float
     is_known: bool
@@ -49,12 +50,12 @@ class SurveillanceEvent:
     camera_uid: str
     camera_name: str
     timestamp: float
-    faces: List[DetectedFace]
+    faces: list[DetectedFace]
     motion_score: float = 0.0
-    frame: Optional[np.ndarray] = None
+    frame: np.ndarray | None = None
 
     @property
-    def known_names(self) -> List[str]:
+    def known_names(self) -> list[str]:
         return [f.name for f in self.faces if f.is_known]
 
     @property
@@ -67,6 +68,7 @@ EventCallback = Callable[[SurveillanceEvent], None]
 
 # ── Stats par caméra ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class CameraStats:
     fps: float = 0.0
@@ -76,10 +78,11 @@ class CameraStats:
     last_detection_ts: float = 0.0
 
     def _fps_tick(self) -> None:
-        pass   # calculé dans la boucle
+        pass  # calculé dans la boucle
 
 
 # ── Moteur principal ──────────────────────────────────────────────────────────
+
 
 class SurveillanceEngine:
     """
@@ -87,7 +90,7 @@ class SurveillanceEngine:
     ROI, modèle configurable, enregistrement vidéo et alertes.
     """
 
-    QUEUE_MAXSIZE = 4           # frames en attente d'analyse par caméra
+    QUEUE_MAXSIZE = 4  # frames en attente d'analyse par caméra
     CACHE_REFRESH_INTERVAL = 30.0
 
     def __init__(
@@ -97,24 +100,24 @@ class SurveillanceEngine:
     ) -> None:
         self._mgr = camera_manager
         self._threshold = threshold
-        self._listeners: List[EventCallback] = []
+        self._listeners: list[EventCallback] = []
 
-        self._threads: Dict[str, threading.Thread] = {}
-        self._stop_events: Dict[str, threading.Event] = {}
-        self._queues: Dict[str, queue.Queue] = {}
+        self._threads: dict[str, threading.Thread] = {}
+        self._stop_events: dict[str, threading.Event] = {}
+        self._queues: dict[str, queue.Queue] = {}
         self._running = False
 
         # Stats publiques
-        self.stats: Dict[str, CameraStats] = {}
+        self.stats: dict[str, CameraStats] = {}
         self._stats_lock = threading.Lock()
 
         # Cache encodages
-        self._encodings_cache: Dict[str, np.ndarray] = {}
+        self._encodings_cache: dict[str, np.ndarray] = {}
         self._cache_lock = threading.Lock()
         self._last_cache_refresh = 0.0
 
         # Motion detectors (un par caméra)
-        self._motion_detectors: Dict[str, MotionDetector] = {}
+        self._motion_detectors: dict[str, MotionDetector] = {}
 
         # Paramètres du profil actif (mis à jour via apply_profile)
         self._motion_required = True
@@ -122,8 +125,8 @@ class SurveillanceEngine:
         self._analysis_interval = 0.5
 
         # Composants optionnels (injectés après construction)
-        self._recorder = None    # VideoRecorder
-        self._alert_mgr = None   # AlertManager
+        self._recorder = None  # VideoRecorder
+        self._alert_mgr = None  # AlertManager
 
     # ── Injection de dépendances optionnelles ─────────────────────────────────
 
@@ -203,17 +206,21 @@ class SurveillanceEngine:
 
         # Thread producteur : lit les frames et les met en queue
         producer = threading.Thread(
-            target=self._produce_loop, args=(uid, q, stop_evt),
-            daemon=True, name=f"prod-{uid}",
+            target=self._produce_loop,
+            args=(uid, q, stop_evt),
+            daemon=True,
+            name=f"prod-{uid}",
         )
         # Thread consommateur : analyse les frames de la queue
         consumer = threading.Thread(
-            target=self._analyse_loop, args=(uid, q, stop_evt),
-            daemon=True, name=f"surv-{uid}",
+            target=self._analyse_loop,
+            args=(uid, q, stop_evt),
+            daemon=True,
+            name=f"surv-{uid}",
         )
         producer.start()
         consumer.start()
-        self._threads[uid] = consumer   # on suit le consommateur
+        self._threads[uid] = consumer  # on suit le consommateur
 
     def _stop_camera_thread(self, uid: str) -> None:
         stop_evt = self._stop_events.pop(uid, None)
@@ -240,8 +247,8 @@ class SurveillanceEngine:
                 try:
                     q.put_nowait(frame)
                 except queue.Full:
-                    pass   # Dropper les frames si l'analyse est trop lente
-            stop_evt.wait(0.033)    # ~30 FPS producteur
+                    pass  # Dropper les frames si l'analyse est trop lente
+            stop_evt.wait(0.033)  # ~30 FPS producteur
 
     # ── Thread consommateur : analyse ────────────────────────────────────────
 
@@ -268,7 +275,7 @@ class SurveillanceEngine:
                 motion_detected, motion_score = motion_det.update(frame)
                 if not motion_detected:
                     fps_frames += 1
-                    continue   # Pas de mouvement → on saute la reconnaissance
+                    continue  # Pas de mouvement → on saute la reconnaissance
 
             with self._stats_lock:
                 if uid in self.stats:
@@ -353,7 +360,7 @@ class SurveillanceEngine:
             return frame[y1:y2, x1:x2]
         return frame
 
-    def _process_frame(self, frame: np.ndarray) -> List[DetectedFace]:
+    def _process_frame(self, frame: np.ndarray) -> list[DetectedFace]:
         small = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
         rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
 
@@ -367,8 +374,8 @@ class SurveillanceEngine:
             known_names = list(self._encodings_cache.keys())
             known_encs = list(self._encodings_cache.values())
 
-        results: List[DetectedFace] = []
-        for loc, enc in zip(locations, encodings):
+        results: list[DetectedFace] = []
+        for loc, enc in zip(locations, encodings, strict=False):
             top, right, bottom, left = loc
             loc_full = (top * 2, right * 2, bottom * 2, left * 2)
 
@@ -384,12 +391,17 @@ class SurveillanceEngine:
                 else:
                     confidence = round(1.0 - best_dist, 3)
 
-            results.append(DetectedFace(
-                location=loc_full, name=name, confidence=confidence, is_known=is_known,
-            ))
+            results.append(
+                DetectedFace(
+                    location=loc_full,
+                    name=name,
+                    confidence=confidence,
+                    is_known=is_known,
+                )
+            )
         return results
 
-    def _annotate_frame(self, frame: np.ndarray, faces: List[DetectedFace], config) -> np.ndarray:
+    def _annotate_frame(self, frame: np.ndarray, faces: list[DetectedFace], config) -> np.ndarray:
         # Décaler si ROI active
         off_x = off_y = 0
         if config and config.roi:
@@ -397,13 +409,23 @@ class SurveillanceEngine:
 
         for face in faces:
             top, right, bottom, left = face.location
-            top += off_y; bottom += off_y; left += off_x; right += off_x
+            top += off_y
+            bottom += off_y
+            left += off_x
+            right += off_x
             color = (0, 200, 0) if face.is_known else (0, 0, 220)
             cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
             label = f"{face.name} ({face.confidence:.0%})"
             cv2.rectangle(frame, (left, bottom - 22), (right, bottom), color, cv2.FILLED)
-            cv2.putText(frame, label, (left + 4, bottom - 6),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            cv2.putText(
+                frame,
+                label,
+                (left + 4, bottom - 6),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),
+                1,
+            )
         return frame
 
     # ── Cache encodages ───────────────────────────────────────────────────────
@@ -416,9 +438,7 @@ class SurveillanceEngine:
         try:
             new_map = load_encodings_map()
             with self._cache_lock:
-                self._encodings_cache = {
-                    name: np.array(enc) for name, enc in new_map.items()
-                }
+                self._encodings_cache = {name: np.array(enc) for name, enc in new_map.items()}
             self._last_cache_refresh = time.monotonic()
             logger.debug("Cache encodages rechargé (%d visage(s))", len(self._encodings_cache))
         except Exception as exc:
@@ -429,6 +449,6 @@ class SurveillanceEngine:
 
     # ── Accès aux stats ───────────────────────────────────────────────────────
 
-    def get_stats(self, uid: str) -> Optional[CameraStats]:
+    def get_stats(self, uid: str) -> CameraStats | None:
         with self._stats_lock:
             return self.stats.get(uid)

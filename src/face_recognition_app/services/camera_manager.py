@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
 from .camera_source import CameraConfig, CameraSource, create_camera_source
 
@@ -34,10 +34,10 @@ class CameraManager:
 
     def __init__(self, cameras_file: Path) -> None:
         self._file = cameras_file
-        self._configs: Dict[str, CameraConfig] = {}
-        self._sources: Dict[str, CameraSource] = {}
+        self._configs: dict[str, CameraConfig] = {}
+        self._sources: dict[str, CameraSource] = {}
         # Callbacks invoqués quand une caméra est ajoutée / supprimée
-        self._on_change_callbacks: List[Callable[[], None]] = []
+        self._on_change_callbacks: list[Callable[[], None]] = []
         self._load()
 
     # ── Persistence ──────────────────────────────────────────────────────────
@@ -57,7 +57,9 @@ class CameraManager:
     def _save(self) -> None:
         try:
             self._file.write_text(
-                json.dumps([c.to_dict() for c in self._configs.values()], indent=2, ensure_ascii=False),
+                json.dumps(
+                    [c.to_dict() for c in self._configs.values()], indent=2, ensure_ascii=False
+                ),
                 encoding="utf-8",
             )
         except Exception as exc:
@@ -90,10 +92,10 @@ class CameraManager:
             self.start_camera(uid)
         self._notify()
 
-    def list_configs(self) -> List[CameraConfig]:
+    def list_configs(self) -> list[CameraConfig]:
         return list(self._configs.values())
 
-    def get_config(self, uid: str) -> Optional[CameraConfig]:
+    def get_config(self, uid: str) -> CameraConfig | None:
         return self._configs.get(uid)
 
     # ── Cycle de vie ─────────────────────────────────────────────────────────
@@ -107,7 +109,7 @@ class CameraManager:
         if not config.enabled:
             return False
         if uid in self._sources and self._sources[uid].is_running:
-            return True   # déjà active
+            return True  # déjà active
 
         source = create_camera_source(config)
         ok = source.start()
@@ -139,10 +141,10 @@ class CameraManager:
         source = self._sources.get(uid)
         return source.get_frame() if source else None
 
-    def get_source(self, uid: str) -> Optional[CameraSource]:
+    def get_source(self, uid: str) -> CameraSource | None:
         return self._sources.get(uid)
 
-    def get_all_sources(self) -> Dict[str, CameraSource]:
+    def get_all_sources(self) -> dict[str, CameraSource]:
         return dict(self._sources)
 
     def is_running(self, uid: str) -> bool:

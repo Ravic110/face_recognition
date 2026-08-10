@@ -24,7 +24,7 @@ def _iter_encoding_files():
 
 
 def _read_json(path):
-    with open(path, "r") as f:
+    with open(path) as f:
         return json.load(f)
 
 
@@ -62,10 +62,12 @@ def load_existing_encodings():
         if not validate_encoding(data):
             continue
 
-        encodings.append({
-            "name": data["name"],
-            "encoding": np.array(data["encoding"]),
-        })
+        encodings.append(
+            {
+                "name": data["name"],
+                "encoding": np.array(data["encoding"]),
+            }
+        )
     return encodings
 
 

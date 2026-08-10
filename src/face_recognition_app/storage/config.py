@@ -15,6 +15,7 @@ VIDEO_FACE_TOLERANCE = 0.5
 DEFAULT_ENCODED_DIR = PROJECT_ROOT / "encodings"
 LEGACY_ENCODED_DIR = Path.cwd() / "encodings"
 
+
 def _has_json_files(path):
     if not path.exists():
         return False

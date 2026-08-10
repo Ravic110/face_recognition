@@ -1,12 +1,21 @@
 from datetime import datetime
+
 from face_recognition import compare_faces, face_distance
 
-from face_recognition_app.storage.config import DUPLICATE_TOLERANCE, FACE_RECOGNITION_THRESHOLD
+from face_recognition_app.storage.config import DUPLICATE_TOLERANCE
 from face_recognition_app.storage.encodings_store import (
     delete_encoding as _delete_encoding,
+)
+from face_recognition_app.storage.encodings_store import (
     load_existing_encodings as _load_existing_encodings,
+)
+from face_recognition_app.storage.encodings_store import (
     save_face_encoding as _save_face_encoding,
+)
+from face_recognition_app.storage.encodings_store import (
     update_metadata_entry as _update_metadata_entry,
+)
+from face_recognition_app.storage.encodings_store import (
     validate_encoding as _validate_encoding,
 )
 

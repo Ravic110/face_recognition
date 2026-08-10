@@ -18,7 +18,6 @@ import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 import cv2
 import numpy as np
@@ -32,6 +31,7 @@ DB_PATH = PROJECT_ROOT / "events.db"
 
 # ── Modèle ────────────────────────────────────────────────────────────────────
 
+
 class StoredEvent:
     """Représentation d'un événement de détection chargé depuis SQLite."""
 
@@ -41,8 +41,8 @@ class StoredEvent:
         timestamp: float,
         camera_uid: str,
         camera_name: str,
-        faces: List[dict],
-        snapshot_b64: Optional[str] = None,
+        faces: list[dict],
+        snapshot_b64: str | None = None,
     ) -> None:
         self.id = id
         self.timestamp = timestamp
@@ -56,7 +56,7 @@ class StoredEvent:
         return datetime.fromtimestamp(self.timestamp)
 
     @property
-    def known_names(self) -> List[str]:
+    def known_names(self) -> list[str]:
         return [f["name"] for f in self.faces if f.get("is_known")]
 
     @property
@@ -76,6 +76,7 @@ class StoredEvent:
 
 
 # ── Store ─────────────────────────────────────────────────────────────────────
+
 
 class EventStore:
     """
@@ -130,8 +131,8 @@ class EventStore:
         timestamp: float,
         camera_uid: str,
         camera_name: str,
-        faces: List[dict],
-        frame: Optional[np.ndarray] = None,
+        faces: list[dict],
+        frame: np.ndarray | None = None,
         save_snapshot: bool = True,
     ) -> StoredEvent:
         snapshot_b64 = None
@@ -159,41 +160,55 @@ class EventStore:
 
     # ── Lecture ───────────────────────────────────────────────────────────────
 
-    def get_recent(self, count: int = DEFAULT_RECENT_COUNT) -> List[StoredEvent]:
-        rows = self._conn().execute(
-            "SELECT * FROM events ORDER BY timestamp DESC LIMIT ?", (count,)
-        ).fetchall()
+    def get_recent(self, count: int = DEFAULT_RECENT_COUNT) -> list[StoredEvent]:
+        rows = (
+            self._conn()
+            .execute("SELECT * FROM events ORDER BY timestamp DESC LIMIT ?", (count,))
+            .fetchall()
+        )
         return [self._row_to_event(r) for r in rows]
 
-    def get_by_id(self, event_id: int) -> Optional[StoredEvent]:
-        row = self._conn().execute(
-            "SELECT * FROM events WHERE id = ?", (event_id,)
-        ).fetchone()
+    def get_by_id(self, event_id: int) -> StoredEvent | None:
+        row = self._conn().execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
         return self._row_to_event(row) if row else None
 
-    def get_for_date(self, date: datetime) -> List[StoredEvent]:
+    def get_for_date(self, date: datetime) -> list[StoredEvent]:
         start = datetime(date.year, date.month, date.day).timestamp()
         end = start + 86400
-        rows = self._conn().execute(
-            "SELECT * FROM events WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp DESC",
-            (start, end),
-        ).fetchall()
+        rows = (
+            self._conn()
+            .execute(
+                "SELECT * FROM events WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp DESC",
+                (start, end),
+            )
+            .fetchall()
+        )
         return [self._row_to_event(r) for r in rows]
 
-    def get_by_camera(self, camera_uid: str, count: int = DEFAULT_RECENT_COUNT) -> List[StoredEvent]:
-        rows = self._conn().execute(
-            "SELECT * FROM events WHERE camera_uid = ? ORDER BY timestamp DESC LIMIT ?",
-            (camera_uid, count),
-        ).fetchall()
+    def get_by_camera(
+        self, camera_uid: str, count: int = DEFAULT_RECENT_COUNT
+    ) -> list[StoredEvent]:
+        rows = (
+            self._conn()
+            .execute(
+                "SELECT * FROM events WHERE camera_uid = ? ORDER BY timestamp DESC LIMIT ?",
+                (camera_uid, count),
+            )
+            .fetchall()
+        )
         return [self._row_to_event(r) for r in rows]
 
-    def get_by_person(self, name: str, count: int = DEFAULT_RECENT_COUNT) -> List[StoredEvent]:
+    def get_by_person(self, name: str, count: int = DEFAULT_RECENT_COUNT) -> list[StoredEvent]:
         # SQLite LIKE sur le JSON (suffisant pour des noms simples)
         pattern = f'%"name": "{name}"%'
-        rows = self._conn().execute(
-            "SELECT * FROM events WHERE faces_json LIKE ? ORDER BY timestamp DESC LIMIT ?",
-            (pattern, count),
-        ).fetchall()
+        rows = (
+            self._conn()
+            .execute(
+                "SELECT * FROM events WHERE faces_json LIKE ? ORDER BY timestamp DESC LIMIT ?",
+                (pattern, count),
+            )
+            .fetchall()
+        )
         return [self._row_to_event(r) for r in rows]
 
     def count(self) -> int:
@@ -232,15 +247,13 @@ class EventStore:
             snapshot_b64=row["snapshot_b64"],
         )
 
-    def _encode_snapshot(self, frame: np.ndarray) -> Optional[str]:
+    def _encode_snapshot(self, frame: np.ndarray) -> str | None:
         try:
             h, w = frame.shape[:2]
             if w > self.SNAPSHOT_WIDTH:
                 scale = self.SNAPSHOT_WIDTH / w
                 frame = cv2.resize(frame, (self.SNAPSHOT_WIDTH, int(h * scale)))
-            ok, buf = cv2.imencode(
-                ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, self.SNAPSHOT_QUALITY]
-            )
+            ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, self.SNAPSHOT_QUALITY])
             if ok:
                 return base64.b64encode(buf.tobytes()).decode("ascii")
         except Exception as exc:

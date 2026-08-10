@@ -22,7 +22,6 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Deque, Dict, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -40,7 +39,7 @@ class CameraBuffer:
     def __init__(self, pre_seconds: float, fps: float = 15.0) -> None:
         self._fps = fps
         capacity = int(pre_seconds * fps)
-        self._frames: Deque[np.ndarray] = deque(maxlen=max(1, capacity))
+        self._frames: deque[np.ndarray] = deque(maxlen=max(1, capacity))
         self._lock = threading.Lock()
 
     def push(self, frame: np.ndarray) -> None:
@@ -87,11 +86,11 @@ class VideoRecorder:
         self._max_clips = max_clips
 
         # Buffer par caméra
-        self._buffers: Dict[str, CameraBuffer] = {}
+        self._buffers: dict[str, CameraBuffer] = {}
         self._buf_lock = threading.Lock()
 
         # Threads d'enregistrement en cours
-        self._rec_threads: Dict[str, threading.Thread] = {}
+        self._rec_threads: dict[str, threading.Thread] = {}
         self._rec_lock = threading.Lock()
 
     # ── API principale ────────────────────────────────────────────────────────
@@ -104,7 +103,7 @@ class VideoRecorder:
             buf = self._buffers[camera_uid]
         buf.push(frame)
 
-    def trigger_recording(self, camera_uid: str, camera_name: str) -> Optional[Path]:
+    def trigger_recording(self, camera_uid: str, camera_name: str) -> Path | None:
         """
         Déclenche l'enregistrement d'un clip pour la caméra donnée.
         Lance un thread de post-capture non bloquant.
@@ -112,7 +111,7 @@ class VideoRecorder:
         """
         with self._rec_lock:
             if camera_uid in self._rec_threads and self._rec_threads[camera_uid].is_alive():
-                return None   # déjà en cours d'enregistrement
+                return None  # déjà en cours d'enregistrement
 
         with self._buf_lock:
             buf = self._buffers.get(camera_uid)
@@ -151,8 +150,8 @@ class VideoRecorder:
         clip_path: Path,
     ) -> None:
         """Thread : écrit les frames pré-détection puis capture les frames post."""
-        writer: Optional[cv2.VideoWriter] = None
-        frame_size: Optional[Tuple[int, int]] = None
+        writer: cv2.VideoWriter | None = None
+        frame_size: tuple[int, int] | None = None
         post_count = int(self._post * self._fps)
         written = 0
 
@@ -162,9 +161,7 @@ class VideoRecorder:
                 if writer is None:
                     h, w = frame.shape[:2]
                     frame_size = (w, h)
-                    writer = cv2.VideoWriter(
-                        str(clip_path), self.FOURCC, self._fps, frame_size
-                    )
+                    writer = cv2.VideoWriter(str(clip_path), self.FOURCC, self._fps, frame_size)
                 writer.write(frame)
                 written += 1
 
@@ -180,9 +177,7 @@ class VideoRecorder:
                     if writer is None:
                         h, w = frame.shape[:2]
                         frame_size = (w, h)
-                        writer = cv2.VideoWriter(
-                            str(clip_path), self.FOURCC, self._fps, frame_size
-                        )
+                        writer = cv2.VideoWriter(str(clip_path), self.FOURCC, self._fps, frame_size)
                     writer.write(frame)
                     written += 1
                 time.sleep(1.0 / self._fps)

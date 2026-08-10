@@ -15,9 +15,8 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from .config import PROJECT_ROOT
 
@@ -31,31 +30,31 @@ class SurveillanceProfile:
     """Règles d'un profil de surveillance."""
 
     name: str
-    label: str                              # Nom affiché dans l'UI
-    detection_model: str = "hog"            # "hog" (CPU) | "cnn" (GPU)
-    analysis_interval: float = 0.5          # Secondes entre deux analyses
-    motion_required: bool = True            # N'analyser qu'en cas de mouvement
-    motion_sensitivity: int = 500           # Seuil de sensibilité mouvement
-    recognition_threshold: float = 0.5     # Distance de reconnaissance faciale
-    record_video: bool = False              # Enregistrer des clips vidéo
+    label: str  # Nom affiché dans l'UI
+    detection_model: str = "hog"  # "hog" (CPU) | "cnn" (GPU)
+    analysis_interval: float = 0.5  # Secondes entre deux analyses
+    motion_required: bool = True  # N'analyser qu'en cas de mouvement
+    motion_sensitivity: int = 500  # Seuil de sensibilité mouvement
+    recognition_threshold: float = 0.5  # Distance de reconnaissance faciale
+    record_video: bool = False  # Enregistrer des clips vidéo
     pre_record_seconds: float = 5.0
     post_record_seconds: float = 10.0
     alert_on_unknown: bool = True
     alert_on_known: bool = False
-    target_persons: List[str] = field(default_factory=list)
-    enabled_camera_uids: List[str] = field(default_factory=list)  # [] = toutes
+    target_persons: list[str] = field(default_factory=list)
+    enabled_camera_uids: list[str] = field(default_factory=list)  # [] = toutes
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "SurveillanceProfile":
+    def from_dict(cls, data: dict) -> SurveillanceProfile:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
 # ── Profils par défaut ────────────────────────────────────────────────────────
 
-DEFAULT_PROFILES: Dict[str, SurveillanceProfile] = {
+DEFAULT_PROFILES: dict[str, SurveillanceProfile] = {
     "present": SurveillanceProfile(
         name="present",
         label="Présent (domicile occupé)",
@@ -87,7 +86,7 @@ DEFAULT_PROFILES: Dict[str, SurveillanceProfile] = {
         label="Nuit (sensibilité maximale)",
         detection_model="hog",
         analysis_interval=0.3,
-        motion_required=False,          # Analyser en continu la nuit
+        motion_required=False,  # Analyser en continu la nuit
         motion_sensitivity=200,
         recognition_threshold=0.45,
         record_video=True,
@@ -101,6 +100,7 @@ DEFAULT_PROFILES: Dict[str, SurveillanceProfile] = {
 
 # ── Store ─────────────────────────────────────────────────────────────────────
 
+
 class ProfileStore:
     """
     Gère les profils de surveillance.
@@ -113,7 +113,7 @@ class ProfileStore:
 
     def __init__(self, profiles_file: Path = PROFILES_FILE) -> None:
         self._file = profiles_file
-        self._profiles: Dict[str, SurveillanceProfile] = dict(DEFAULT_PROFILES)
+        self._profiles: dict[str, SurveillanceProfile] = dict(DEFAULT_PROFILES)
         self._active_name: str = "present"
         self._load()
 
@@ -136,16 +136,14 @@ class ProfileStore:
             "active": self._active_name,
             "profiles": [p.to_dict() for p in self._profiles.values()],
         }
-        self._file.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        self._file.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # ── API ────────────────────────────────────────────────────────────────────
 
-    def list_profiles(self) -> List[SurveillanceProfile]:
+    def list_profiles(self) -> list[SurveillanceProfile]:
         return list(self._profiles.values())
 
-    def get(self, name: str) -> Optional[SurveillanceProfile]:
+    def get(self, name: str) -> SurveillanceProfile | None:
         return self._profiles.get(name)
 
     def get_active(self) -> SurveillanceProfile:
@@ -168,7 +166,7 @@ class ProfileStore:
 
     def delete_profile(self, name: str) -> bool:
         if name in DEFAULT_PROFILES:
-            return False   # Ne pas supprimer les profils par défaut
+            return False  # Ne pas supprimer les profils par défaut
         if name == self._active_name:
             self._active_name = "present"
         removed = self._profiles.pop(name, None)

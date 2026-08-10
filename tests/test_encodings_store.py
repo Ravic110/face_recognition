@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from face_recognition_app.storage import encodings_store as store
 
@@ -12,6 +11,7 @@ def _setup_tmp_store(tmp_path):
 # ---------------------------------------------------------------------------
 # encodings_store
 # ---------------------------------------------------------------------------
+
 
 def test_save_load_delete_encoding(tmp_path):
     _setup_tmp_store(tmp_path)
@@ -122,7 +122,6 @@ def test_metadata_cleaned_on_delete(tmp_path):
 # ---------------------------------------------------------------------------
 
 from face_recognition_app.core.utils import is_duplicate
-from face_recognition_app.storage.config import DUPLICATE_TOLERANCE
 
 
 def _make_existing(name, vec):

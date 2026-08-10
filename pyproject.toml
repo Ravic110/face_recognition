@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "face_recognition_app"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local face recognition surveillance application with Tkinter UI"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = ["face recognition", "surveillance", "opencv", "tkinter", "security"]
 
@@ -17,12 +17,10 @@ dependencies = [
     "numpy",
     "Pillow",
     "pygame",
-    "playsound",
     "ttkbootstrap",
     "flask",
     "plyer",
     "requests",
-    "psutil",
 ]
 
 [project.scripts]
@@ -33,3 +31,41 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+# Dette héritée, cantonnée aux modules réécrits ou supprimés en Phase 2 et 3.
+# Chaque ligne disparaît avec le fichier qu'elle couvre — ne rien y ajouter.
+# Phase 3 : suppression de interface.py et video_importer.py, refonte du dashboard.
+"src/face_recognition_app/ui/interface.py" = ["B023", "E402", "F403", "F405", "F841"]
+"src/face_recognition_app/ui/video_importer.py" = ["B007", "F403", "F405", "SIM108"]
+"src/face_recognition_app/ui/surveillance_dashboard.py" = ["E702", "F841", "SIM105"]
+"src/face_recognition_app/ui/image_importer.py" = ["B007", "SIM102"]
+# Phase 1, tâche 11 : __main__ est réécrit en composition root.
+"src/face_recognition_app/__main__.py" = ["F403", "F405"]
+# Phase 2 : refonte du moteur, des sources caméra et de l'enregistrement.
+"src/face_recognition_app/services/surveillance_engine.py" = ["E702", "SIM105"]
+"src/face_recognition_app/services/camera_source.py" = ["B024"]
+"src/face_recognition_app/services/video_recorder.py" = ["F841"]
+# Supprimé en tâche 7, remplacé par tests/storage/test_encodings_repository.py.
+"tests/test_encodings_store.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/face_recognition_app/domain", "src/face_recognition_app/settings.py"]
+ignore_missing_imports = true

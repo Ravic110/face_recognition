@@ -17,10 +17,9 @@ import json
 import logging
 import smtplib
 import threading
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import List, Optional
 
 from ..storage.config import PROJECT_ROOT
 
@@ -30,6 +29,7 @@ ALERTS_CONFIG_FILE = PROJECT_ROOT / "alerts_config.json"
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class AlertConfig:
@@ -44,7 +44,7 @@ class AlertConfig:
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    email_recipients: List[str] = field(default_factory=list)
+    email_recipients: list[str] = field(default_factory=list)
 
     # Webhook
     webhook_enabled: bool = False
@@ -52,9 +52,9 @@ class AlertConfig:
     webhook_secret: str = ""
 
     # Filtres d'alerte
-    alert_on_unknown: bool = True          # alerte si visage inconnu
-    alert_on_known: bool = False           # alerte si visage connu
-    target_persons: List[str] = field(default_factory=list)  # personnes ciblées spécifiquement
+    alert_on_unknown: bool = True  # alerte si visage inconnu
+    alert_on_known: bool = False  # alerte si visage connu
+    target_persons: list[str] = field(default_factory=list)  # personnes ciblées spécifiquement
 
     # Anti-spam : délai minimal entre deux alertes (secondes)
     cooldown_seconds: float = 60.0
@@ -63,7 +63,7 @@ class AlertConfig:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "AlertConfig":
+    def from_dict(cls, data: dict) -> AlertConfig:
         return cls(
             desktop_enabled=data.get("desktop_enabled", False),
             email_enabled=data.get("email_enabled", False),
@@ -83,6 +83,7 @@ class AlertConfig:
 
 
 # ── Gestionnaire d'alertes ────────────────────────────────────────────────────
+
 
 class AlertManager:
     """
@@ -130,8 +131,8 @@ class AlertManager:
     def notify(
         self,
         camera_name: str,
-        faces: list,                        # [{"name": str, "is_known": bool, ...}]
-        snapshot_b64: Optional[str] = None,
+        faces: list,  # [{"name": str, "is_known": bool, ...}]
+        snapshot_b64: str | None = None,
     ) -> None:
         """
         Analyse les visages détectés et envoie les alertes si les filtres le permettent.
@@ -156,6 +157,7 @@ class AlertManager:
 
         # Anti-spam (cooldown global)
         import time
+
         with self._lock:
             now = time.monotonic()
             if now - self._last_alert_time < cfg.cooldown_seconds:
@@ -188,7 +190,7 @@ class AlertManager:
         body: str,
         summary: str,
         camera_name: str,
-        snapshot_b64: Optional[str],
+        snapshot_b64: str | None,
     ) -> None:
         cfg = self._config
         if cfg.desktop_enabled:
@@ -201,6 +203,7 @@ class AlertManager:
     def _send_desktop(self, title: str, message: str) -> None:
         try:
             from plyer import notification
+
             notification.notify(
                 title=title,
                 message=message,
@@ -231,14 +234,16 @@ class AlertManager:
         self,
         camera_name: str,
         summary: str,
-        snapshot_b64: Optional[str],
+        snapshot_b64: str | None,
     ) -> None:
         cfg = self._config
         if not cfg.webhook_url:
             return
         try:
             import time
+
             import requests
+
             payload: dict = {
                 "event": "detection",
                 "camera": camera_name,
@@ -267,7 +272,9 @@ class AlertManager:
     def test_email(self) -> str:
         """Retourne '' si OK, sinon le message d'erreur."""
         try:
-            self._send_email("Test Surveillance", "Email de test depuis le système de surveillance.")
+            self._send_email(
+                "Test Surveillance", "Email de test depuis le système de surveillance."
+            )
             return ""
         except Exception as exc:
             return str(exc)

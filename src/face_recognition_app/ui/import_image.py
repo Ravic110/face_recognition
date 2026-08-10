@@ -1,7 +1,8 @@
-import cv2
-import face_recognition
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
+
+import cv2
+import face_recognition
 
 from face_recognition_app.storage.encodings_store import (
     save_face_encoding as store_save_face_encoding,
@@ -74,7 +75,7 @@ def select_face_from_image(image):
             cv2.FONT_HERSHEY_SIMPLEX,
             text_scale,
             (0, 255, 0),
-            max(1, line_thickness // 2)
+            max(1, line_thickness // 2),
         )
 
         precision = calculate_face_precision((top, right, bottom, left), image.shape)
@@ -88,7 +89,14 @@ def select_face_from_image(image):
 
     while True:
         try:
-            choice = int(input(f"Selectionnez le numero du visage a enregistrer (1-{len(face_encodings)}) : ")) - 1
+            choice = (
+                int(
+                    input(
+                        f"Selectionnez le numero du visage a enregistrer (1-{len(face_encodings)}) : "
+                    )
+                )
+                - 1
+            )
             if 0 <= choice < len(face_encodings):
                 return face_encodings[choice], sharpness
             print("Choix invalide. Veuillez reessayer.")
@@ -101,7 +109,9 @@ def import_face_from_image():
     Importer une image depuis le systeme de fichiers, selectionner un visage et demander un nom.
     """
     Tk().withdraw()
-    image_path = askopenfilename(title="Selectionnez une image", filetypes=[("Images", "*.jpg;*.jpeg;*.png")])
+    image_path = askopenfilename(
+        title="Selectionnez une image", filetypes=[("Images", "*.jpg;*.jpeg;*.png")]
+    )
 
     if not image_path:
         print("Aucune image selectionnee.")

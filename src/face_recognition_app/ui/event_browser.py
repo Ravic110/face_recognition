@@ -16,7 +16,6 @@ import tkinter as tk
 from datetime import datetime, timedelta
 from io import BytesIO
 from tkinter import messagebox, ttk
-from typing import List, Optional
 
 from PIL import Image, ImageTk
 
@@ -35,9 +34,9 @@ class EventBrowserApp(tk.Toplevel):
         self.minsize(800, 500)
 
         self._store = event_store
-        self._events: List[StoredEvent] = []
-        self._photo_refs: List[Optional[ImageTk.PhotoImage]] = []
-        self._selected_event: Optional[StoredEvent] = None
+        self._events: list[StoredEvent] = []
+        self._photo_refs: list[ImageTk.PhotoImage | None] = []
+        self._selected_event: StoredEvent | None = None
 
         self._build_ui()
         self._load_events()
@@ -49,26 +48,38 @@ class EventBrowserApp(tk.Toplevel):
         filter_bar = tk.Frame(self, bg="#2b2b2b", padx=8, pady=6)
         filter_bar.pack(fill=tk.X)
 
-        tk.Label(filter_bar, text="Historique", bg="#2b2b2b", fg="white",
-                 font=("Helvetica", 13, "bold")).pack(side=tk.LEFT, padx=6)
+        tk.Label(
+            filter_bar, text="Historique", bg="#2b2b2b", fg="white", font=("Helvetica", 13, "bold")
+        ).pack(side=tk.LEFT, padx=6)
 
-        tk.Label(filter_bar, text="Caméra :", bg="#2b2b2b", fg="#aaa").pack(side=tk.LEFT, padx=(12, 2))
+        tk.Label(filter_bar, text="Caméra :", bg="#2b2b2b", fg="#aaa").pack(
+            side=tk.LEFT, padx=(12, 2)
+        )
         self._cam_var = tk.StringVar(value="Toutes")
-        self._cam_cb = ttk.Combobox(filter_bar, textvariable=self._cam_var, width=14, state="readonly")
+        self._cam_cb = ttk.Combobox(
+            filter_bar, textvariable=self._cam_var, width=14, state="readonly"
+        )
         self._cam_cb.pack(side=tk.LEFT)
         self._cam_cb.bind("<<ComboboxSelected>>", lambda _: self._load_events())
 
-        tk.Label(filter_bar, text="Personne :", bg="#2b2b2b", fg="#aaa").pack(side=tk.LEFT, padx=(10, 2))
+        tk.Label(filter_bar, text="Personne :", bg="#2b2b2b", fg="#aaa").pack(
+            side=tk.LEFT, padx=(10, 2)
+        )
         self._person_var = tk.StringVar()
         ttk.Entry(filter_bar, textvariable=self._person_var, width=14).pack(side=tk.LEFT)
 
         ttk.Button(filter_bar, text="Filtrer", command=self._load_events).pack(side=tk.LEFT, padx=6)
-        ttk.Button(filter_bar, text="Statistiques", command=self._show_stats).pack(side=tk.LEFT, padx=4)
-        ttk.Button(filter_bar, text="Nettoyer…", command=self._purge_dialog).pack(side=tk.LEFT, padx=4)
+        ttk.Button(filter_bar, text="Statistiques", command=self._show_stats).pack(
+            side=tk.LEFT, padx=4
+        )
+        ttk.Button(filter_bar, text="Nettoyer…", command=self._purge_dialog).pack(
+            side=tk.LEFT, padx=4
+        )
 
         self._count_var = tk.StringVar(value="")
-        tk.Label(filter_bar, textvariable=self._count_var, bg="#2b2b2b", fg="#aaa",
-                 font=("Helvetica", 9)).pack(side=tk.RIGHT, padx=10)
+        tk.Label(
+            filter_bar, textvariable=self._count_var, bg="#2b2b2b", fg="#aaa", font=("Helvetica", 9)
+        ).pack(side=tk.RIGHT, padx=10)
 
         # Corps : liste à gauche, détail à droite
         body = tk.PanedWindow(self, orient=tk.HORIZONTAL, sashwidth=5)
@@ -105,16 +116,22 @@ class EventBrowserApp(tk.Toplevel):
         tk.Label(right, text="Détail", font=("Helvetica", 11, "bold")).pack(anchor=tk.W)
 
         # Snapshot
-        self._snap_label = tk.Label(right, bg="#111", width=30, height=12, text="Aucun snapshot",
-                                     fg="#555")
+        self._snap_label = tk.Label(
+            right, bg="#111", width=30, height=12, text="Aucun snapshot", fg="#555"
+        )
         self._snap_label.pack(pady=8)
 
         # Infos
         info_lf = ttk.LabelFrame(right, text="Informations")
         info_lf.pack(fill=tk.X)
         self._detail_var = tk.StringVar(value="Sélectionnez un événement.")
-        tk.Label(info_lf, textvariable=self._detail_var, justify=tk.LEFT,
-                 font=("Helvetica", 9), wraplength=240).pack(anchor=tk.W, padx=6, pady=6)
+        tk.Label(
+            info_lf,
+            textvariable=self._detail_var,
+            justify=tk.LEFT,
+            font=("Helvetica", 9),
+            wraplength=240,
+        ).pack(anchor=tk.W, padx=6, pady=6)
 
     # ── Chargement ────────────────────────────────────────────────────────────
 
@@ -127,9 +144,8 @@ class EventBrowserApp(tk.Toplevel):
         elif cam and cam != "Toutes":
             # Trouver l'uid par le nom
             events = [
-                e for e in self._store.get_recent(self.PAGE_SIZE * 3)
-                if e.camera_name == cam
-            ][:self.PAGE_SIZE]
+                e for e in self._store.get_recent(self.PAGE_SIZE * 3) if e.camera_name == cam
+            ][: self.PAGE_SIZE]
         else:
             events = self._store.get_recent(self.PAGE_SIZE)
 
@@ -152,13 +168,21 @@ class EventBrowserApp(tk.Toplevel):
 
             tag = "known" if evt.known_names and not evt.has_unknown else "unknown"
             if i % 2 == 1:
-                self._tree.insert("", tk.END, iid=str(i), tags=(tag, "odd"),
-                                   values=(evt.dt.strftime("%Y-%m-%d %H:%M:%S"),
-                                           evt.camera_name, face_str))
+                self._tree.insert(
+                    "",
+                    tk.END,
+                    iid=str(i),
+                    tags=(tag, "odd"),
+                    values=(evt.dt.strftime("%Y-%m-%d %H:%M:%S"), evt.camera_name, face_str),
+                )
             else:
-                self._tree.insert("", tk.END, iid=str(i), tags=(tag,),
-                                   values=(evt.dt.strftime("%Y-%m-%d %H:%M:%S"),
-                                           evt.camera_name, face_str))
+                self._tree.insert(
+                    "",
+                    tk.END,
+                    iid=str(i),
+                    tags=(tag,),
+                    values=(evt.dt.strftime("%Y-%m-%d %H:%M:%S"), evt.camera_name, face_str),
+                )
 
     def _update_camera_list(self) -> None:
         cameras = sorted({e.camera_name for e in self._store.get_recent(500)})
@@ -222,8 +246,9 @@ class EventBrowserApp(tk.Toplevel):
         dlg.resizable(False, False)
         dlg.grab_set()
 
-        tk.Label(dlg, text="Supprimer les événements antérieurs à :",
-                 font=("Helvetica", 10)).pack(padx=16, pady=(12, 4))
+        tk.Label(dlg, text="Supprimer les événements antérieurs à :", font=("Helvetica", 10)).pack(
+            padx=16, pady=(12, 4)
+        )
 
         days_var = tk.IntVar(value=30)
         frame = tk.Frame(dlg)

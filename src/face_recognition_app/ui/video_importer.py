@@ -1,29 +1,30 @@
-import face_recognition
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
-from ttkbootstrap.dialogs import Messagebox, Querybox
-from PIL import Image, ImageTk
-from tkinter import LEFT, Canvas, Frame, Scrollbar, filedialog
-import threading
-import cv2
-import os
-import logging
 import json
-import numpy as np
+import logging
+import os
+import threading
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from queue import Queue
+from tkinter import LEFT, Canvas, Frame, filedialog
+
+import cv2
+import face_recognition
+import numpy as np
+import ttkbootstrap as ttk
+from PIL import Image, ImageTk
+from ttkbootstrap.constants import *
+from ttkbootstrap.dialogs import Messagebox, Querybox
 
 from face_recognition_app.core.utils import is_duplicate
-from face_recognition_app.storage.config import VIDEO_FACE_TOLERANCE
 from face_recognition_app.services.video_processor import process_chunk
+from face_recognition_app.storage.config import VIDEO_FACE_TOLERANCE
 from face_recognition_app.storage.encodings_store import (
-    load_existing_encodings,
-    save_face_encoding,
     delete_encoding,
+    load_existing_encodings,
     load_image_for_name,
+    save_face_encoding,
 )
 
-logging.basicConfig(filename='app.log', level=logging.INFO)
+logging.basicConfig(filename="app.log", level=logging.INFO)
 
 
 class VideoImporterApp:
@@ -47,21 +48,22 @@ class VideoImporterApp:
 
     def setup_ui(self):
         main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Control Panel
         control_frame = ttk.Frame(main_frame)
-        control_frame.pack(fill='x', pady=10)
+        control_frame.pack(fill="x", pady=10)
 
-        ttk.Button(control_frame,
-                   text="Manage Encodings",
-                   command=self.show_encoding_manager,
-                   bootstyle=INFO).pack(side=RIGHT, padx=5)
+        ttk.Button(
+            control_frame,
+            text="Manage Encodings",
+            command=self.show_encoding_manager,
+            bootstyle=INFO,
+        ).pack(side=RIGHT, padx=5)
 
-        ttk.Button(control_frame,
-                   text="Select Video",
-                   command=self.select_video,
-                   bootstyle=PRIMARY).pack(side=LEFT, padx=5)
+        ttk.Button(
+            control_frame, text="Select Video", command=self.select_video, bootstyle=PRIMARY
+        ).pack(side=LEFT, padx=5)
 
         # Ajout d'un Spinbox pour frame_skip
         frame_skip_frame = ttk.Frame(control_frame)
@@ -69,11 +71,13 @@ class VideoImporterApp:
 
         ttk.Label(frame_skip_frame, text="Frame Skip:").pack(side=LEFT)
         self.frame_skip_var = ttk.IntVar(value=10)  # Valeur par défaut
-        ttk.Spinbox(frame_skip_frame, from_=1, to=30, textvariable=self.frame_skip_var, width=5).pack(side=LEFT)
+        ttk.Spinbox(
+            frame_skip_frame, from_=1, to=30, textvariable=self.frame_skip_var, width=5
+        ).pack(side=LEFT)
 
         # Preview
         self.preview_frame = ttk.LabelFrame(main_frame, text="Smart Preview")
-        self.preview_frame.pack(fill='x', pady=10)
+        self.preview_frame.pack(fill="x", pady=10)
 
         self.preview_labels = [ttk.Label(self.preview_frame) for _ in range(3)]
         for label in self.preview_labels:
@@ -81,7 +85,7 @@ class VideoImporterApp:
 
         # Info
         info_frame = ttk.Frame(main_frame)
-        info_frame.pack(fill='x', pady=10)
+        info_frame.pack(fill="x", pady=10)
 
         self.video_label = ttk.Label(info_frame, text="No video selected", width=60)
         self.video_label.pack(side=LEFT)
@@ -93,23 +97,23 @@ class VideoImporterApp:
         self.setup_progress_bars(main_frame)
 
         # Log
-        self.log_text = ttk.Text(main_frame, height=8, wrap='word')
-        self.log_text.pack(fill='x', pady=10)
+        self.log_text = ttk.Text(main_frame, height=8, wrap="word")
+        self.log_text.pack(fill="x", pady=10)
 
     def setup_progress_bars(self, parent):
         progress_frame = ttk.LabelFrame(parent, text="Processing Stages")
-        progress_frame.pack(fill='x', pady=10)
+        progress_frame.pack(fill="x", pady=10)
 
         self.stage_bars = []
         stages = [
             ("Video Analysis", "Scene detection"),
             ("Face Processing", "Multi-core processing"),
-            ("Result Merging", "Database comparison")
+            ("Result Merging", "Database comparison"),
         ]
 
         for idx, (title, desc) in enumerate(stages):
             frame = ttk.Frame(progress_frame)
-            frame.pack(fill='x', pady=5)
+            frame.pack(fill="x", pady=5)
 
             ttk.Label(frame, text=f"{idx + 1}. {title}", width=25).pack(side=LEFT)
             bar = ttk.Progressbar(frame, orient=HORIZONTAL, length=300, mode="determinate")
@@ -181,7 +185,7 @@ class VideoImporterApp:
         except Exception as e:
             self.log_error(f"Erreur lors de la génération de la prévisualisation : {str(e)}")
         finally:
-            if 'cap' in locals():
+            if "cap" in locals():
                 cap.release()
 
     def update_preview_label(self, idx, frame):
@@ -190,7 +194,9 @@ class VideoImporterApp:
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convertir en RGB
             img = ImageTk.PhotoImage(Image.fromarray(img))  # Convertir en format Tkinter
             self.preview_labels[idx].config(image=img)
-            self.preview_labels[idx].image = img  # Garder une référence pour éviter la garbage collection
+            self.preview_labels[
+                idx
+            ].image = img  # Garder une référence pour éviter la garbage collection
         except Exception as e:
             self.log_error(f"Erreur lors de la mise à jour de la prévisualisation : {str(e)}")
 
@@ -251,11 +257,13 @@ class VideoImporterApp:
         all_faces = []
         for temp_file in temp_files:
             try:
-                with open(temp_file, 'r') as f:
+                with open(temp_file) as f:
                     chunk_data = json.load(f)
                     for face in chunk_data:
-                        face['image'] = bytes.fromhex(face['image'])  # Convertir l'hexadécimal en bytes
-                        face['encoding'] = np.array(face['encoding'])
+                        face["image"] = bytes.fromhex(
+                            face["image"]
+                        )  # Convertir l'hexadécimal en bytes
+                        face["encoding"] = np.array(face["encoding"])
                     all_faces.extend(chunk_data)
                 os.remove(temp_file)
             except Exception as e:
@@ -275,9 +283,9 @@ class VideoImporterApp:
         for idx, face_data in enumerate(faces):
             try:
                 # Conversion des données sérialisées
-                face_image = np.frombuffer(face_data['image'], dtype=np.uint8)
+                face_image = np.frombuffer(face_data["image"], dtype=np.uint8)
                 face_image = cv2.imdecode(face_image, cv2.IMREAD_COLOR)
-                face_encoding = np.array(face_data['encoding'])
+                face_encoding = np.array(face_data["encoding"])
 
                 # Mise à jour de la progression
                 self.update_progress(2, (idx / total_faces) * 100)
@@ -285,31 +293,37 @@ class VideoImporterApp:
                 # Vérification des doublons existants
                 existing_name = is_duplicate(face_encoding, self.existing_encodings, self.tolerance)
                 if existing_name:
-                    unique_groups.append({
-                        'name': existing_name,
-                        'count': 1,
-                        'encoding': face_encoding,
-                        'thumbnail': face_image
-                    })
+                    unique_groups.append(
+                        {
+                            "name": existing_name,
+                            "count": 1,
+                            "encoding": face_encoding,
+                            "thumbnail": face_image,
+                        }
+                    )
                     continue
 
                 # Vérification des similarités dans les nouveaux visages
                 is_new_group = True
                 for group in unique_groups:
-                    if self.are_faces_similar(face_encoding, group['encoding']):
-                        group['count'] += 1
-                        if self.get_image_sharpness(face_image) > self.get_image_sharpness(group['thumbnail']):
-                            group['thumbnail'] = face_image
+                    if self.are_faces_similar(face_encoding, group["encoding"]):
+                        group["count"] += 1
+                        if self.get_image_sharpness(face_image) > self.get_image_sharpness(
+                            group["thumbnail"]
+                        ):
+                            group["thumbnail"] = face_image
                         is_new_group = False
                         break
 
                 if is_new_group:
-                    unique_groups.append({
-                        'name': None,
-                        'count': 1,
-                        'encoding': face_encoding,
-                        'thumbnail': face_image
-                    })
+                    unique_groups.append(
+                        {
+                            "name": None,
+                            "count": 1,
+                            "encoding": face_encoding,
+                            "thumbnail": face_image,
+                        }
+                    )
 
             except Exception as e:
                 self.log_error(f"Erreur traitement visage {idx}: {str(e)}")
@@ -327,7 +341,7 @@ class VideoImporterApp:
 
     def show_faces_for_selection(self, face_groups):
         """Affiche les groupes de visages détectés avec possibilité de sélection"""
-        if hasattr(self, 'current_face_window') and self.current_face_window.winfo_exists():
+        if hasattr(self, "current_face_window") and self.current_face_window.winfo_exists():
             self.current_face_window.destroy()
 
         selection_window = ttk.Toplevel(self.root)
@@ -351,7 +365,7 @@ class VideoImporterApp:
             group_frame.pack(fill="x", pady=10, padx=20)
 
             # Miniature + informations
-            thumbnail = self.get_tk_thumbnail(group['thumbnail'])
+            thumbnail = self.get_tk_thumbnail(group["thumbnail"])
             ttk.Label(group_frame, image=thumbnail).image = thumbnail
             ttk.Label(group_frame, image=thumbnail).pack(side="left")
 
@@ -359,32 +373,40 @@ class VideoImporterApp:
             info_frame.pack(side="left", padx=10, fill="x", expand=True)
 
             # Nom existant ou compteur
-            if group['name']:
-                ttk.Label(info_frame,
-                          text=f"Personne existante : {group['name']}",
-                          font=("Helvetica", 12, "bold"),
-                          bootstyle=SUCCESS).pack(anchor="w")
+            if group["name"]:
+                ttk.Label(
+                    info_frame,
+                    text=f"Personne existante : {group['name']}",
+                    font=("Helvetica", 12, "bold"),
+                    bootstyle=SUCCESS,
+                ).pack(anchor="w")
             else:
-                ttk.Label(info_frame,
-                          text=f"Apparitions similaires : {group['count']}",
-                          font=("Helvetica", 10),
-                          bootstyle=INFO).pack(anchor="w")
+                ttk.Label(
+                    info_frame,
+                    text=f"Apparitions similaires : {group['count']}",
+                    font=("Helvetica", 10),
+                    bootstyle=INFO,
+                ).pack(anchor="w")
 
                 # Bouton d'assignation
-                ttk.Button(info_frame,
-                           text="Nommer ce groupe",
-                           command=lambda g=group: self.prompt_for_group_name(g),
-                           bootstyle=(OUTLINE, PRIMARY)).pack(pady=5)
+                ttk.Button(
+                    info_frame,
+                    text="Nommer ce groupe",
+                    command=lambda g=group: self.prompt_for_group_name(g),
+                    bootstyle=(OUTLINE, PRIMARY),
+                ).pack(pady=5)
 
         # Gestion du redimensionnement
-        content_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        content_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
 
         # Affichage des statistiques
         stats_frame = ttk.Frame(selection_window)
         stats_frame.pack(pady=10)
-        ttk.Label(stats_frame,
-                  text=f"{len(face_groups)} groupes uniques détectés",
-                  bootstyle=INFO).pack()
+        ttk.Label(
+            stats_frame, text=f"{len(face_groups)} groupes uniques détectés", bootstyle=INFO
+        ).pack()
 
     def get_tk_thumbnail(self, cv_image):
         """Convertit une image OpenCV en format Tkinter"""
@@ -393,32 +415,36 @@ class VideoImporterApp:
         return ImageTk.PhotoImage(pil_image)
 
     def prompt_for_group_name(self, group):
-        name = Querybox.get_string("Nom du groupe",
-                                   f"Entrez le nom pour ces {group['count']} apparitions :",
-                                   parent=self.current_face_window)
+        name = Querybox.get_string(
+            "Nom du groupe",
+            f"Entrez le nom pour ces {group['count']} apparitions :",
+            parent=self.current_face_window,
+        )
         if name and isinstance(name, str) and name.strip():
-            save_face_encoding(name.strip(), group['encoding'], group['thumbnail'])
+            save_face_encoding(name.strip(), group["encoding"], group["thumbnail"])
             self.existing_encodings = load_existing_encodings()
             self.refresh_face_window()
         else:
             Messagebox.show_warning("Nom invalide", "Veuillez entrer un nom valide.")
 
     def refresh_face_window(self):
-        if not hasattr(self, 'unique_faces') or not self.unique_faces:
+        if not hasattr(self, "unique_faces") or not self.unique_faces:
             return
-        if hasattr(self, 'current_face_window') and self.current_face_window.winfo_exists():
+        if hasattr(self, "current_face_window") and self.current_face_window.winfo_exists():
             self.current_face_window.destroy()
             self.show_faces_for_selection(self.unique_faces)
 
     def show_encoding_manager(self):
-        if hasattr(self, 'encoding_manager_window') and self.encoding_manager_window.winfo_exists():
+        if hasattr(self, "encoding_manager_window") and self.encoding_manager_window.winfo_exists():
             self.encoding_manager_window.lift()
             return
         manager = ttk.Toplevel(self.root)
         manager.title("Encoding Manager")
         manager.geometry("800x600")
 
-        self.encoding_progress = ttk.Progressbar(manager, orient=HORIZONTAL, length=300, mode="determinate")
+        self.encoding_progress = ttk.Progressbar(
+            manager, orient=HORIZONTAL, length=300, mode="determinate"
+        )
         self.encoding_progress.pack(pady=10)
         self.io_executor.submit(self.load_encodings_async, manager)
 
@@ -444,18 +470,20 @@ class VideoImporterApp:
         # Afficher les encodings
         for enc in encodings:
             row = ttk.Frame(frame)
-            row.pack(fill='x', pady=5)
+            row.pack(fill="x", pady=5)
 
-            img_data = self.load_encoding_data(enc['name'])
+            img_data = self.load_encoding_data(enc["name"])
             if img_data is not None:
                 img = self.convert_cv_to_tk(img_data)
                 ttk.Label(row, image=img).pack(side=LEFT)
 
-            ttk.Label(row, text=enc['name'], width=30).pack(side=LEFT)
-            ttk.Button(row,
-                       text="Delete",
-                       command=lambda n=enc['name']: self.delete_encoding(n, window),
-                       bootstyle=DANGER).pack(side=RIGHT)
+            ttk.Label(row, text=enc["name"], width=30).pack(side=LEFT)
+            ttk.Button(
+                row,
+                text="Delete",
+                command=lambda n=enc["name"]: self.delete_encoding(n, window),
+                bootstyle=DANGER,
+            ).pack(side=RIGHT)
 
         frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
@@ -480,7 +508,7 @@ class VideoImporterApp:
             self.display_encodings(window, self.existing_encodings)  # Mettre à jour la fenêtre
 
     def update_progress(self, stage_idx, progress):
-        self.stage_bars[stage_idx]['value'] = progress
+        self.stage_bars[stage_idx]["value"] = progress
         self.root.update_idletasks()
 
     def check_progress(self):
@@ -491,7 +519,7 @@ class VideoImporterApp:
             self.root.after(100, self.check_progress)
 
     def log_error(self, message):
-        self.log_text.insert('end', f"[ERROR] {message}\n")
+        self.log_text.insert("end", f"[ERROR] {message}\n")
         logging.error(message)
 
     def on_closing(self):
