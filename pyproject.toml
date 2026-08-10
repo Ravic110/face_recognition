@@ -7,7 +7,8 @@ name = "face_recognition_app"
 version = "0.2.0"
 description = "Local face recognition surveillance application with Tkinter UI"
 readme = "README.md"
-requires-python = ">=3.10"
+# numpy 2.4 exige >=3.12 ; le plancher reel du projet est donc 3.12.
+requires-python = ">=3.12"
 license = "MIT"
 keywords = ["face recognition", "surveillance", "opencv", "tkinter", "security"]
 
@@ -39,7 +40,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -62,6 +63,6 @@ ignore = ["E501"]
 "src/face_recognition_app/services/video_recorder.py" = ["F841"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 files = ["src/face_recognition_app/domain", "src/face_recognition_app/settings.py"]
 ignore_missing_imports = true

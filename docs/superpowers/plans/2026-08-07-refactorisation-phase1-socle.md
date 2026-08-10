@@ -1,5 +1,20 @@
 # Refactorisation — Phase 1 : Socle et stockage — Implementation Plan
 
+> ⚠️ **Révision du 2026-08-10 — la rétention des événements a changé après rédaction.**
+>
+> Ce plan spécifie `event_retention_days = 30` avec purge automatique au démarrage
+> (tâches 3, 8 et 11). **Cette conception était dangereuse et a été abandonnée** : son
+> exécution a détruit 715 événements réels de façon irrécupérable. Voir la section
+> « 12 bis » de la spec.
+>
+> Le comportement livré est le suivant, et prévaut sur tout extrait de code ci-dessous :
+> `event_retention_days = 0` par défaut (conservation illimitée), `purge_expired()`
+> inerte tant que la rétention vaut 0, sauvegarde `events.db.bak` avant toute
+> suppression, avertissement journalisé, et **aucune purge au démarrage**.
+>
+> Les étapes de vérification qui appellent `build_context()` doivent s'exécuter sur
+> une **copie temporaire** des données, jamais sur la racine du projet.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Poser le socle testable de l'application — outillage, configuration injectée, domaine pur sans dépendance matérielle, et repositories de stockage robustes — sans changer le comportement visible de l'application.
@@ -3380,6 +3395,8 @@ Note : le menu à six boutons disparaît, conformément à la spec §4.5 — le 
 
 Run: `.venv/bin/ruff check src tests && .venv/bin/python -m pytest`
 Expected: `All checks passed!` puis `99 passed`
+
+**Exécuter cette vérification sur une copie temporaire, jamais sur la racine du projet.**
 
 Run: `.venv/bin/python -c "
 import sys; sys.path.insert(0,'src')

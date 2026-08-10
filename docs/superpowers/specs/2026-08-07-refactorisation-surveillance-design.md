@@ -268,9 +268,8 @@ le moteur. Un enregistrement vidéo qui échoue est aujourd'hui parfaitement sil
 
 Trois garde-fous entrent dans `AppSettings` :
 
-- `event_retention_days` (défaut 30) — purge automatique au démarrage puis
-  quotidienne, avec `VACUUM` périodique. Aujourd'hui `delete_before()` existe mais
-  n'est appelé qu'à la main, et la base atteint déjà 8,5 Mo.
+- `event_retention_days` (**défaut 0 = conservation illimitée**). Voir la révision
+  ci-dessous : ce point a été corrigé en cours d'implémentation.
 - `max_clips` et un plafond en volume sur `clips/`.
 - Les connexions SQLite par thread sont fermées à l'arrêt du thread, au lieu de fuir à
   chaque cycle start/stop.
@@ -364,6 +363,40 @@ veut sécuriser le système au plus vite.
 - **Le multi-utilisateur, les rôles, le chiffrement au repos.** Hors sujet pour un
   système mono-foyer.
 - **La détection d'objets ou de mouvement avancée** (personnes, véhicules, animaux).
+
+## 12 bis. Révision du 2026-08-10 — la purge ne doit rien supprimer d'elle-même
+
+**Ce que la spec disait initialement.** `event_retention_days` valait 30 par défaut,
+avec purge automatique au démarrage puis quotidienne, et `VACUUM` périodique.
+
+**Ce qui s'est passé.** Pendant l'implémentation de la Phase 1, une étape de
+vérification a appelé `build_context()` sur le répertoire réel du projet. La purge
+s'est exécutée comme spécifié et a supprimé **715 événements** datant du 7 mai, soit
+94 jours — au-delà de la rétention. Le `VACUUM` qui a suivi a rendu la perte
+irrécupérable : pas de `-wal`, pas de sauvegarde, et `events.db` est dans
+`.gitignore` donc absent de l'historique.
+
+**Pourquoi c'était un défaut de conception, pas seulement une erreur d'exécution.**
+Si la purge ne s'était pas déclenchée là, elle se serait déclenchée au premier
+lancement réel chez l'utilisateur, avec le même résultat. Un système de surveillance
+dont la raison d'être est de conserver un historique de détections ne peut pas
+l'effacer de lui-même, silencieusement, au démarrage.
+
+**Décision.** La rétention passe à `0` par défaut, ce qui signifie « conserver
+indéfiniment » :
+
+- `purge_expired()` retourne immédiatement `0` tant que `event_retention_days <= 0`.
+- Lorsqu'une rétention est configurée, une sauvegarde `events.db.bak` précède
+  toute suppression effective, réalisée via l'API `Connection.backup()` de SQLite.
+- Le nombre de lignes visées est journalisé en `WARNING` **avant** l'opération.
+- Aucune purge n'a lieu au démarrage. Le nettoyage devient une action manuelle,
+  déclenchée depuis la fenêtre d'historique, avec confirmation.
+- Les vérifications des plans d'implémentation s'exécutent sur une copie temporaire
+  des données, jamais sur la racine du projet.
+
+`max_clips` conserve en revanche sa suppression automatique : un clip vidéo est
+volumineux et reconstituable par une nouvelle détection, contrairement à une ligne
+d'historique.
 
 ## 13. Compatibilité des données
 
