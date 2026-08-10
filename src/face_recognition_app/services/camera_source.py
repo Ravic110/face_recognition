@@ -13,19 +13,20 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
-from abc import ABC
 
 import cv2
 import numpy as np
 
 from ..domain.camera import CameraConfig
+from ..domain.connection import ConnectionState, ReconnectPolicy
 
 # CameraConfig est réexporté : l'UI l'importe depuis ce module.
 __all__ = [
     "CameraConfig",
     "CameraSource",
+    "ConnectionState",
     "IPCameraSource",
+    "ReconnectPolicy",
     "WebcamSource",
     "create_camera_source",
 ]
@@ -36,9 +37,21 @@ logger = logging.getLogger(__name__)
 # ── Classe de base ────────────────────────────────────────────────────────────
 
 
-class CameraSource(ABC):
+class CameraSource:
     """
     Source vidéo générique avec boucle de lecture en arrière-plan.
+
+    Machine à états :
+
+        DISCONNECTED ──tentative──► CONNECTING ──succès──► CONNECTED
+              ▲                          │                     │
+              └──────échec, backoff──────┘◄───perte de flux────┘
+
+    `DISCONNECTED` retente toujours. L'implémentation précédente restait
+    définitivement inerte lorsqu'une réouverture échouait.
+
+    Les attentes utilisent `Event.wait()` et non `time.sleep()`, afin que
+    `stop()` rende la main immédiatement même au milieu d'un backoff de 60 s.
 
     Usage :
         src = WebcamSource(config)
@@ -47,21 +60,20 @@ class CameraSource(ABC):
         src.stop()
     """
 
-    # Paramètres du backoff exponentiel de reconnexion
-    RECONNECT_DELAY_MIN = 2.0
-    RECONNECT_DELAY_MAX = 60.0
-    RECONNECT_BACKOFF_FACTOR = 2.0
+    # Pause de la boucle quand la source est saine, pour ne pas saturer le CPU
+    IDLE_POLL = 0.005
 
-    def __init__(self, config: CameraConfig) -> None:
+    def __init__(self, config: CameraConfig, policy: ReconnectPolicy | None = None) -> None:
         self.config = config
+        self._policy = policy or ReconnectPolicy()
         self._cap: cv2.VideoCapture | None = None
         self._lock = threading.Lock()
-        self._running = False
         self._latest_frame: np.ndarray | None = None
         self._thread: threading.Thread | None = None
-        self._connected = False
-        self._reconnect_delay = self.RECONNECT_DELAY_MIN
-        self._reconnect_count = 0
+        self._stop_event = threading.Event()
+        self._state = ConnectionState.DISCONNECTED
+        self._attempts = 0
+        self._next_retry_in = 0.0
 
     # ── Propriétés ────────────────────────────────────────────────────────────
 
@@ -74,26 +86,41 @@ class CameraSource(ABC):
         return self.config.uid
 
     @property
+    def state(self) -> ConnectionState:
+        return self._state
+
+    @property
     def is_running(self) -> bool:
-        return self._running
+        return self._thread is not None and self._thread.is_alive()
 
     @property
     def is_connected(self) -> bool:
-        return self._connected
+        return self._state is ConnectionState.CONNECTED
+
+    @property
+    def reconnect_attempts(self) -> int:
+        """Nombre d'échecs consécutifs. Remis à zéro dès qu'une ouverture réussit."""
+        return self._attempts
+
+    @property
+    def next_retry_in(self) -> float:
+        """Délai avant la prochaine tentative, 0 si la source est connectée."""
+        return self._next_retry_in
 
     # ── Cycle de vie ──────────────────────────────────────────────────────────
 
     def start(self) -> bool:
-        """Ouvre la capture et démarre la boucle de lecture. Retourne True si OK."""
-        if self._running:
+        """Ouvre la capture et démarre la boucle de lecture. Idempotent."""
+        if self.is_running:
             return True
 
-        ok = self._open_capture()
-        if not ok:
+        self._stop_event.clear()
+        self._state = ConnectionState.CONNECTING
+        if not self._try_open():
+            self._state = ConnectionState.DISCONNECTED
             logger.error("[%s] Impossible d'ouvrir la source : %s", self.name, self.config.source)
             return False
 
-        self._running = True
         self._thread = threading.Thread(
             target=self._read_loop,
             daemon=True,
@@ -104,68 +131,97 @@ class CameraSource(ABC):
         return True
 
     def stop(self) -> None:
-        """Arrête la capture proprement."""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=3.0)
+        """Arrête la capture. Idempotent, et interrompt un backoff en cours."""
+        self._stop_event.set()
+        thread, self._thread = self._thread, None
+        if thread is not None:
+            thread.join(timeout=5.0)
+            if thread.is_alive():
+                logger.warning("[%s] Le thread de lecture ne s'est pas arrêté", self.name)
         self._release()
+        self._state = ConnectionState.DISCONNECTED
+        self._next_retry_in = 0.0
         logger.info("[%s] Arrêté", self.name)
 
     # ── Lecture de frame ──────────────────────────────────────────────────────
 
     def get_frame(self) -> np.ndarray | None:
-        """Retourne la dernière frame disponible (thread-safe), ou None."""
+        """Dernière frame disponible (copie, thread-safe), ou None."""
         with self._lock:
             return self._latest_frame.copy() if self._latest_frame is not None else None
 
-    # ── Implémentation interne ────────────────────────────────────────────────
+    # ── Points de surcharge ───────────────────────────────────────────────────
 
     def _open_capture(self) -> bool:
+        """Ouvre la capture. Retourne True si elle est utilisable."""
         cap = cv2.VideoCapture(self.config.source)
         if not cap.isOpened():
+            # Libérer même une capture inutilisable : sinon le descripteur fuit.
+            cap.release()
             return False
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.height)
         self._cap = cap
-        self._connected = True
         return True
 
+    def _read_raw(self) -> tuple[bool, np.ndarray | None]:
+        """Lit une frame. Retourne (succès, frame)."""
+        if self._cap is None:
+            return False, None
+        ok, frame = self._cap.read()
+        return bool(ok), frame
+
     def _release(self) -> None:
-        if self._cap:
+        if self._cap is not None:
             self._cap.release()
             self._cap = None
-        self._connected = False
+
+    # ── Machine à états ───────────────────────────────────────────────────────
+
+    def _try_open(self) -> bool:
+        """Tente une ouverture et met l'état à jour."""
+        if self._open_capture():
+            self._state = ConnectionState.CONNECTED
+            self._attempts = 0
+            self._next_retry_in = 0.0
+            return True
+        self._release()
+        return False
+
+    def _handle_failure(self) -> None:
+        """Perte de flux ou ouverture ratée : libère, attend, puis retente."""
+        self._state = ConnectionState.DISCONNECTED
+        self._release()
+        self._attempts += 1
+        delai = self._policy.next_delay(self._attempts)
+        self._next_retry_in = delai
+        logger.warning(
+            "[%s] Flux indisponible (tentative %d), nouvelle connexion dans %.0f s…",
+            self.name,
+            self._attempts,
+            delai,
+        )
+        # Event.wait plutôt que time.sleep : stop() interrompt l'attente.
+        if self._stop_event.wait(delai):
+            return
+        self._state = ConnectionState.CONNECTING
+        self._try_open()
 
     def _read_loop(self) -> None:
-        while self._running:
-            if self._cap and self._cap.isOpened():
-                ret, frame = self._cap.read()
-                if ret:
-                    with self._lock:
-                        self._latest_frame = frame
-                    self._connected = True
-                    # Réinitialiser le backoff après une lecture réussie
-                    self._reconnect_delay = self.RECONNECT_DELAY_MIN
-                    self._reconnect_count = 0
-                else:
-                    self._connected = False
-                    self._release()
-                    self._reconnect_count += 1
-                    logger.warning(
-                        "[%s] Perte de flux (tentative %d), nouvelle connexion dans %.0fs…",
-                        self.name,
-                        self._reconnect_count,
-                        self._reconnect_delay,
-                    )
-                    time.sleep(self._reconnect_delay)
-                    # Backoff exponentiel plafonné
-                    self._reconnect_delay = min(
-                        self._reconnect_delay * self.RECONNECT_BACKOFF_FACTOR,
-                        self.RECONNECT_DELAY_MAX,
-                    )
-                    self._open_capture()
-            else:
-                time.sleep(0.1)
+        while not self._stop_event.is_set():
+            if self._state is not ConnectionState.CONNECTED:
+                # Toujours retenter — c'est ce qui manquait auparavant.
+                self._handle_failure()
+                continue
+
+            ok, frame = self._read_raw()
+            if not ok:
+                self._handle_failure()
+                continue
+
+            with self._lock:
+                self._latest_frame = frame
+            self._stop_event.wait(self.IDLE_POLL)
 
 
 # ── Implémentations concrètes ────────────────────────────────────────────────
