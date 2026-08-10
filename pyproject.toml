@@ -62,8 +62,6 @@ ignore = ["E501"]
 "src/face_recognition_app/services/surveillance_engine.py" = ["E702", "SIM105"]
 "src/face_recognition_app/services/camera_source.py" = ["B024"]
 "src/face_recognition_app/services/video_recorder.py" = ["F841"]
-# Supprimé en tâche 7, remplacé par tests/storage/test_encodings_repository.py.
-"tests/test_encodings_store.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.10"
