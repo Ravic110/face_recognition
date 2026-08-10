@@ -159,7 +159,7 @@ class EventBrowserApp(tk.Toplevel):
         self._tree.delete(*self._tree.get_children())
         for i, evt in enumerate(self._events):
             names = ", ".join(evt.known_names) if evt.known_names else ""
-            unknown_n = sum(1 for f in evt.faces if not f.get("is_known", False))
+            unknown_n = evt.unknown_count
             face_str = names
             if unknown_n:
                 face_str += (" + " if names else "") + f"{unknown_n} inconnu(s)"
@@ -224,9 +224,8 @@ class EventBrowserApp(tk.Toplevel):
             "",
         ]
         for f in evt.faces:
-            status = "✓ Connu" if f.get("is_known") else "✗ Inconnu"
-            conf = f.get("confidence", 0)
-            lines.append(f"  {f.get('name', '?')} — {status} ({conf:.0%})")
+            status = "✓ Connu" if f.is_known else "✗ Inconnu"
+            lines.append(f"  {f.name} — {status} ({f.confidence:.0%})")
         self._detail_var.set("\n".join(lines))
 
     # ── Statistiques ──────────────────────────────────────────────────────────

@@ -561,15 +561,11 @@ class SurveillanceDashboard(tk.Toplevel):
     def _on_surveillance_event(self, event: SurveillanceEvent) -> None:
         """Reçu depuis un thread d'analyse — on stocke et planifie la mise à jour UI."""
         # Enregistrer l'événement
-        faces_data = [
-            {"name": f.name, "confidence": f.confidence, "is_known": f.is_known}
-            for f in event.faces
-        ]
         self._event_store.record(
             timestamp=event.timestamp,
             camera_uid=event.camera_uid,
             camera_name=event.camera_name,
-            faces=faces_data,
+            faces=event.faces,
             frame=event.frame,
             save_snapshot=True,
         )
