@@ -1,114 +1,106 @@
-import tkinter as tk
+"""
+__main__.py
+Point d'entrée de l'application — composition root.
+
+Construit la configuration, installe le logging, instancie les repositories,
+applique les migrations de démarrage, puis lance le tableau de bord.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
 
 import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
 
-from face_recognition_app.ui import import_image, interface, video_importer
+from .logging_config import configure_logging
+from .settings import AppSettings
+from .storage.camera_repository import CameraRepository
+from .storage.encodings_repository import EncodingsRepository
+from .storage.event_repository import EventRepository
+from .storage.profile_repository import ProfileRepository
+
+logger = logging.getLogger(__name__)
 
 
-def launch_surveillance_dashboard(root):
+@dataclass
+class AppContext:
+    """Composants partagés, construits une fois et passés explicitement."""
+
+    settings: AppSettings
+    encodings: EncodingsRepository
+    events: EventRepository
+    profiles: ProfileRepository
+    cameras: CameraRepository
+
+
+def _verifier_opencv() -> None:
     """
-    Lance le tableau de bord en réutilisant le root ttkbootstrap existant.
+    Signale l'installation simultanée d'opencv-python et opencv-python-headless.
 
-    Le menu est caché (withdraw) et le dashboard s'ouvre comme Toplevel.
-    Quand le dashboard se ferme, il détruit le root, ce qui termine l'app.
+    La variante headless l'emporte à l'import et casse silencieusement toute
+    fonction d'affichage OpenCV.
     """
-    from face_recognition_app.ui.surveillance_dashboard import SurveillanceDashboard
+    from importlib.metadata import distributions
 
+    installes = {d.metadata["Name"] for d in distributions() if d.metadata["Name"]}
+    if {"opencv-python", "opencv-python-headless"} <= installes:
+        logger.warning(
+            "opencv-python et opencv-python-headless sont installés ensemble : "
+            "l'affichage OpenCV sera cassé. Exécutez « pip uninstall opencv-python-headless »."
+        )
+
+
+def build_context(settings: AppSettings) -> AppContext:
+    """Instancie les repositories et applique les migrations de démarrage."""
+    settings.ensure_directories()
+
+    profiles = ProfileRepository(settings)
+    if profiles.migrate_alert_fields():
+        logger.info("Migration des champs d'alerte appliquée")
+
+    events = EventRepository(settings)
+    events.start()
+    # Aucune purge au démarrage : l'historique de détections est la raison d'être
+    # du système. Le nettoyage est une action manuelle, depuis la fenêtre
+    # d'historique, précédée d'une confirmation et d'une sauvegarde.
+
+    context = AppContext(
+        settings=settings,
+        encodings=EncodingsRepository(settings),
+        events=events,
+        profiles=profiles,
+        cameras=CameraRepository(settings),
+    )
+
+    # L'adaptateur d'encodages partage le repository de l'application.
+    from .storage import encodings_store
+
+    encodings_store.set_repository(context.encodings)
+
+    return context
+
+
+def main() -> None:
+    settings = AppSettings.create()
+    configure_logging(settings)
+    logger.info("Démarrage — racine projet : %s", settings.project_root)
+
+    _verifier_opencv()
+    context = build_context(settings)
+
+    root = ttk.Window(themename="solar")
     root.withdraw()
+
+    from .ui.surveillance_dashboard import SurveillanceDashboard
+
     SurveillanceDashboard(root)
 
-
-def launch_image_interface(root):
-    window = tk.Toplevel(root)
-    interface.FaceRecognitionApp(window)
-
-
-def launch_realtime_recognition(root):
-    window = tk.Toplevel(root)
-    app = interface.FaceRecognitionApp(window)
-    window.after(0, app.start_camera)
-
-
-def launch_video_importer(root):
-    window = tk.Toplevel(root)
-    video_importer.VideoImporterApp(window)
-
-
-def launch_image_importer(root):
-    """Lance le module d'import d'images avec interface graphique."""
-    from face_recognition_app.ui.image_importer import ImageImporterApp
-
-    ImageImporterApp(root)
-
-
-def launch_import_image_cli():
-    import_image.import_face_from_image()
-
-
-def main():
-    root = ttk.Window(themename="solar")
-    root.title("Système de Reconnaissance Faciale")
-    root.geometry("520x500")
-    root.resizable(False, False)
-
-    # En-tête
-    header_frame = ttk.Frame(root, padding=(20, 20, 20, 10))
-    header_frame.pack(fill="x")
-
-    ttk.Label(
-        header_frame,
-        text="Surveillance Intelligente",
-        font=("Helvetica", 20, "bold"),
-        bootstyle=PRIMARY,
-    ).pack()
-
-    ttk.Label(
-        header_frame,
-        text="Choisissez un mode pour commencer",
-        font=("Helvetica", 10),
-        bootstyle=SECONDARY,
-    ).pack(pady=(4, 0))
-
-    ttk.Separator(root, orient="horizontal").pack(fill="x", padx=20, pady=8)
-
-    # Boutons
-    btn_frame = ttk.Frame(root, padding=(30, 5, 30, 20))
-    btn_frame.pack(expand=True, fill="both")
-
-    buttons = [
-        # ── Nouveau mode principal ──────────────────────────────────────────
-        (
-            "Tableau de bord Surveillance (multi-caméras)",
-            lambda: launch_surveillance_dashboard(root),
-            SUCCESS,
-        ),
-        # ── Modules existants ───────────────────────────────────────────────
-        ("Reconnaissance faciale (image)", lambda: launch_image_interface(root), PRIMARY),
-        (
-            "Reconnaissance en temps réel (Webcam)",
-            lambda: launch_realtime_recognition(root),
-            PRIMARY,
-        ),
-        ("Importer une vidéo", lambda: launch_video_importer(root), INFO),
-        (
-            "Importer des images (enregistrer des visages)",
-            lambda: launch_image_importer(root),
-            INFO,
-        ),
-        ("Quitter", root.destroy, DANGER),
-    ]
-
-    for text, command, style in buttons:
-        ttk.Button(
-            btn_frame,
-            text=text,
-            command=command,
-            width=42,
-            bootstyle=style,
-        ).pack(pady=5, fill="x")
-
-    root.mainloop()
+    try:
+        root.mainloop()
+    finally:
+        context.events.stop()
+        logger.info("Arrêt terminé")
 
 
 if __name__ == "__main__":

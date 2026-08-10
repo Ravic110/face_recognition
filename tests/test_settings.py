@@ -18,8 +18,12 @@ def test_valeurs_par_defaut_sures(tmp_path):
     s = AppSettings.create(project_root=tmp_path)
     assert s.api_host == "127.0.0.1"
     assert s.api_allow_control is False
-    assert s.event_retention_days == 30
     assert s.capture_fps == 15.0
+
+
+def test_retention_illimitee_par_defaut(tmp_path):
+    """0 = conserver indefiniment. Un systeme de securite n'efface pas son historique."""
+    assert AppSettings.create(project_root=tmp_path).event_retention_days == 0
 
 
 def test_surcharge_par_variables_d_environnement(tmp_path, monkeypatch):

@@ -1,3 +1,4 @@
+import sqlite3
 import time
 
 import numpy as np
@@ -107,18 +108,67 @@ def test_suppression_avant_une_date(repo):
     assert repo.count() == 1
 
 
-def test_purge_selon_la_retention(tmp_path):
+def test_retention_illimitee_par_defaut(repo):
+    """Un systeme de securite n'efface pas ses preuves tout seul."""
+    tres_ancien = time.time() - 3650 * 86400
+    repo.record_sync(tres_ancien, "cam1", "Salon", [])
+    assert repo.purge_expired() == 0
+    assert repo.count() == 1
+
+
+def test_purge_selon_la_retention_quand_configuree(tmp_path, monkeypatch):
+    monkeypatch.setenv("FR_EVENT_RETENTION_DAYS", "30")
     settings = AppSettings.create(project_root=tmp_path)
     settings.ensure_directories()
     repo = EventRepository(settings)
     try:
-        ancien = time.time() - (settings.event_retention_days + 1) * 86400
+        ancien = time.time() - 31 * 86400
         repo.record_sync(ancien, "cam1", "Salon", [])
         repo.record_sync(time.time(), "cam1", "Salon", [])
         assert repo.purge_expired() == 1
         assert repo.count() == 1
     finally:
         repo.stop()
+
+
+def test_purge_sauvegarde_la_base_avant_de_supprimer(tmp_path, monkeypatch):
+    monkeypatch.setenv("FR_EVENT_RETENTION_DAYS", "30")
+    settings = AppSettings.create(project_root=tmp_path)
+    settings.ensure_directories()
+    repo = EventRepository(settings)
+    try:
+        repo.record_sync(time.time() - 31 * 86400, "cam1", "Salon", [])
+        repo.purge_expired()
+        sauvegarde = settings.events_db.with_suffix(".db.bak")
+        assert sauvegarde.exists()
+
+        recuperee = sqlite3.connect(str(sauvegarde))
+        try:
+            assert recuperee.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
+        finally:
+            recuperee.close()
+    finally:
+        repo.stop()
+
+
+def test_pas_de_sauvegarde_si_rien_a_purger(tmp_path, monkeypatch):
+    monkeypatch.setenv("FR_EVENT_RETENTION_DAYS", "30")
+    settings = AppSettings.create(project_root=tmp_path)
+    settings.ensure_directories()
+    repo = EventRepository(settings)
+    try:
+        repo.record_sync(time.time(), "cam1", "Salon", [])
+        assert repo.purge_expired() == 0
+        assert not settings.events_db.with_suffix(".db.bak").exists()
+    finally:
+        repo.stop()
+
+
+def test_delete_before_reste_disponible_pour_action_manuelle(repo):
+    """La purge manuelle depuis l'historique n'est pas soumise a la retention."""
+    repo.record_sync(1000.0, "cam1", "Salon", [])
+    repo.record_sync(3000.0, "cam1", "Salon", [])
+    assert repo.delete_before(2000.0) == 1
 
 
 def test_ecriture_asynchrone_finit_par_persister(repo):

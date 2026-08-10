@@ -13,10 +13,6 @@ from ttkbootstrap.constants import *
 
 from face_recognition_app.storage.config import FACE_RECOGNITION_THRESHOLD, PROJECT_ROOT
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 from face_recognition_app.storage.encodings_store import (
     delete_encoding as delete_stored_encoding,

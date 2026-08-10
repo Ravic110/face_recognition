@@ -24,7 +24,7 @@ from face_recognition_app.storage.encodings_store import (
     save_face_encoding,
 )
 
-logging.basicConfig(filename="app.log", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class VideoImporterApp:
@@ -520,7 +520,7 @@ class VideoImporterApp:
 
     def log_error(self, message):
         self.log_text.insert("end", f"[ERROR] {message}\n")
-        logging.error(message)
+        logger.error(message)
 
     def on_closing(self):
         self.running = False

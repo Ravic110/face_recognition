@@ -8,8 +8,11 @@ Deux améliorations par rapport à la version précédente :
     la main immédiatement ; un thread dédié encode le snapshot et écrit en base.
     Auparavant l'encodage JPEG et l'INSERT se faisaient dans le thread d'analyse,
     sous verrou global, ce qui sérialisait les caméras.
-  - **Purge automatique.** `purge_expired()` applique `settings.event_retention_days`,
-    empêchant la base de croître sans fin.
+  - **Purge explicite et réversible.** L'historique de détections est la raison
+    d'être du système : rien n'est supprimé automatiquement. `event_retention_days`
+    vaut 0 par défaut, ce qui désactive toute purge ; lorsqu'elle est configurée,
+    une sauvegarde `events.db.bak` précède la suppression et le nombre de lignes
+    visées est journalisé en WARNING avant l'opération.
 
 Schéma inchangé, `events.db` existant est lu sans migration :
     events(id, timestamp, camera_uid, camera_name, faces_json, snapshot_b64)
@@ -27,6 +30,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import cv2
@@ -319,16 +323,55 @@ class EventRepository:
             conn.commit()
             return cur.rowcount
 
+    def backup(self) -> Path | None:
+        """
+        Copie la base vers `events.db.bak`. Retourne le chemin, ou None si échec.
+
+        Utilisé avant toute suppression de masse : une purge accidentelle doit
+        rester réversible.
+        """
+        cible = self._db_path.with_suffix(".db.bak")
+        try:
+            with self._write_lock:
+                source = self._conn()
+                destination = sqlite3.connect(str(cible))
+                try:
+                    source.backup(destination)
+                finally:
+                    destination.close()
+        except (sqlite3.Error, OSError) as exc:
+            logger.error("Sauvegarde de la base impossible : %s", exc)
+            return None
+        logger.info("Base sauvegardée dans %s", cible.name)
+        return cible
+
     def purge_expired(self) -> int:
-        """Supprime les événements plus vieux que la rétention configurée."""
+        """
+        Supprime les événements au-delà de la rétention configurée.
+
+        Ne fait rien si `event_retention_days` vaut 0 — la valeur par défaut.
+        Une sauvegarde précède toute suppression effective.
+        """
+        if self._retention_days <= 0:
+            return 0
+
         cutoff = time.time() - self._retention_days * 86400
+        a_supprimer = int(
+            self._conn()
+            .execute("SELECT COUNT(*) FROM events WHERE timestamp < ?", (cutoff,))
+            .fetchone()[0]
+        )
+        if not a_supprimer:
+            return 0
+
+        logger.warning(
+            "Purge : %d événement(s) antérieur(s) à %d jours vont être supprimés",
+            a_supprimer,
+            self._retention_days,
+        )
+        self.backup()
         supprimes = self.delete_before(cutoff)
-        if supprimes:
-            logger.info(
-                "Purge : %d événement(s) au-delà de %d jours supprimé(s)",
-                supprimes,
-                self._retention_days,
-            )
+        logger.warning("Purge : %d événement(s) supprimé(s)", supprimes)
         return supprimes
 
     def vacuum(self) -> None:

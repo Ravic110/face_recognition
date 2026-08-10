@@ -1,40 +1,28 @@
-import os
-from pathlib import Path
+"""
+config.py
+ADAPTATEUR TEMPORAIRE — conserve les constantes utilisées par services/ et ui/.
 
-# Racine du projet (4 niveaux au-dessus de ce fichier)
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+Les valeurs proviennent désormais d'AppSettings. Ce module sera supprimé en
+Phase 3, quand tous les appelants auront reçu la configuration par injection.
 
-# --- Tolérances pour la reconnaissance faciale ---
-# Seuil de distance pour reconnaître un visage (webcam / interface image)
-FACE_RECOGNITION_THRESHOLD = 0.5
-# Tolérance pour la détection de doublons (utils.py)
-DUPLICATE_TOLERANCE = 0.6
-# Tolérance pour le regroupement de visages issus d'une vidéo
-VIDEO_FACE_TOLERANCE = 0.5
+Les trois seuils historiques sont ramenés à deux :
+    FACE_RECOGNITION_THRESHOLD → profil.recognition_threshold
+    DUPLICATE_TOLERANCE, VIDEO_FACE_TOLERANCE → settings.duplicate_tolerance
+"""
 
-DEFAULT_ENCODED_DIR = PROJECT_ROOT / "encodings"
-LEGACY_ENCODED_DIR = Path.cwd() / "encodings"
+from __future__ import annotations
 
+from ..domain.profile import DEFAULT_PROFILES
+from ..settings import AppSettings
 
-def _has_json_files(path):
-    if not path.exists():
-        return False
-    return any(p.suffix == ".json" for p in path.glob("*.json"))
+_settings = AppSettings.create()
+_settings.ensure_directories()
 
+PROJECT_ROOT = _settings.project_root
+ENCODED_DIR = str(_settings.encodings_dir)
+META_FILE = str(_settings.encodings_dir / "metadata.json")
+CAMERAS_FILE = _settings.cameras_file
 
-# Si l'ancien dossier existe et que le nouveau est vide, on reutilise l'ancien
-if LEGACY_ENCODED_DIR.exists() and not _has_json_files(DEFAULT_ENCODED_DIR):
-    ENCODED_DIR = str(LEGACY_ENCODED_DIR)
-else:
-    ENCODED_DIR = str(DEFAULT_ENCODED_DIR)
-
-META_FILE = str(Path(ENCODED_DIR) / "metadata.json")
-
-# Fichier de configuration des caméras (surveillance multi-sources)
-CAMERAS_FILE = PROJECT_ROOT / "cameras.json"
-
-# Dossier des événements de surveillance (SQLite uniquement)
-# events.db est utilisé pour le stockage des événements
-
-# Créer les dossiers s'ils n'existent pas
-os.makedirs(ENCODED_DIR, exist_ok=True)
+DUPLICATE_TOLERANCE = _settings.duplicate_tolerance
+VIDEO_FACE_TOLERANCE = _settings.duplicate_tolerance
+FACE_RECOGNITION_THRESHOLD = DEFAULT_PROFILES["present"].recognition_threshold

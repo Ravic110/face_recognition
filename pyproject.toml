@@ -56,8 +56,6 @@ ignore = ["E501"]
 "src/face_recognition_app/ui/video_importer.py" = ["B007", "F403", "F405", "SIM108"]
 "src/face_recognition_app/ui/surveillance_dashboard.py" = ["E702", "F841", "SIM105"]
 "src/face_recognition_app/ui/image_importer.py" = ["B007", "SIM102"]
-# Phase 1, tâche 11 : __main__ est réécrit en composition root.
-"src/face_recognition_app/__main__.py" = ["F403", "F405"]
 # Phase 2 : refonte du moteur, des sources caméra et de l'enregistrement.
 "src/face_recognition_app/services/surveillance_engine.py" = ["E702", "SIM105"]
 "src/face_recognition_app/services/camera_source.py" = ["B024"]

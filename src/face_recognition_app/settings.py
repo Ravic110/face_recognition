@@ -74,8 +74,10 @@ class AppSettings:
     capture_fps: float = 15.0
     ui_refresh_ms: int = 200
 
-    # Rétention
-    event_retention_days: int = 30
+    # Rétention. 0 = conserver indéfiniment, valeur par défaut : un système de
+    # sécurité n'efface pas son historique de lui-même. La purge est une action
+    # manuelle, ou s'active en fixant FR_EVENT_RETENTION_DAYS à une valeur > 0.
+    event_retention_days: int = 0
     max_clips: int = 100
     max_clips_mb: int = 2048
 
@@ -104,7 +106,7 @@ class AppSettings:
             api_key_file=config_dir / "api_key",
             capture_fps=_env_float("FR_CAPTURE_FPS", 15.0),
             ui_refresh_ms=_env_int("FR_UI_REFRESH_MS", 200),
-            event_retention_days=_env_int("FR_EVENT_RETENTION_DAYS", 30),
+            event_retention_days=_env_int("FR_EVENT_RETENTION_DAYS", 0),
             max_clips=_env_int("FR_MAX_CLIPS", 100),
             max_clips_mb=_env_int("FR_MAX_CLIPS_MB", 2048),
             api_host=os.environ.get("FR_API_HOST", "127.0.0.1"),
