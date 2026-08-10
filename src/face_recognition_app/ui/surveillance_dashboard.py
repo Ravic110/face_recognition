@@ -22,11 +22,12 @@ from tkinter import messagebox, ttk
 import cv2
 from PIL import Image, ImageTk
 
+from ..api.server import ApiServer
 from ..services.alert_manager import AlertManager
-from ..services.api_server import ApiServer
 from ..services.camera_manager import CameraManager
 from ..services.surveillance_engine import SurveillanceEngine, SurveillanceEvent
 from ..services.video_recorder import VideoRecorder
+from ..settings import AppSettings
 from ..storage.config import PROJECT_ROOT
 from ..storage.event_store import EventStore
 from ..storage.profile_store import ProfileStore
@@ -171,7 +172,13 @@ class SurveillanceDashboard(tk.Toplevel):
         self._engine.set_alert_manager(self._alert_mgr)
         self._engine.apply_profile(self._profile_store.get_active())
 
-        self._api_server = ApiServer(self._cam_mgr, self._engine, self._event_store, self._recorder)
+        self._api_server = ApiServer(
+            AppSettings.create(),
+            self._cam_mgr,
+            self._engine,
+            self._event_store.repository,
+            self._recorder,
+        )
 
         # Tiles par uid caméra
         self._tiles: dict[str, CameraTile] = {}
@@ -482,7 +489,7 @@ class SurveillanceDashboard(tk.Toplevel):
         self.wait_window(dlg)
         if dlg.result:
             self._cam_mgr.add_camera(dlg.result)
-            if self._engine._running:
+            if self._engine.is_running:
                 self._cam_mgr.start_camera(dlg.result.uid)
 
     def _edit_camera(self) -> None:
@@ -663,7 +670,7 @@ class SurveillanceDashboard(tk.Toplevel):
                 frame = self._cam_mgr.get_frame(uid)
                 tile.update_frame(frame, connected=connected, fps=fps_str)
 
-        if self._engine._running:
+        if self._engine.is_running:
             self._refresh_cam_list()
 
     # ── Plein écran ───────────────────────────────────────────────────────────
@@ -768,10 +775,55 @@ class SurveillanceDashboard(tk.Toplevel):
             self._api_server.stop()
             self._api_var.set("API: OFF")
             self._api_btn.configure(bg="#555")
-        else:
-            self._api_server.start(host="0.0.0.0", port=5000)
-            self._api_var.set("API: :5000")
-            self._api_btn.configure(bg="#27ae60")
+            return
+
+        if not self._api_server.start():
+            messagebox.showerror(
+                "API",
+                f"Impossible d'écouter sur {self._api_server.url}.\n"
+                "Le port est peut-être déjà utilisé.",
+                parent=self,
+            )
+            return
+
+        self._api_var.set(f"API: :{self._api_server.port}")
+        self._api_btn.configure(bg="#27ae60")
+        self._afficher_cle_api()
+
+    def _afficher_cle_api(self) -> None:
+        """Montre l'URL et la clé, avec un bouton de copie."""
+        fenetre = tk.Toplevel(self)
+        fenetre.title("Accès à l'API")
+        fenetre.resizable(False, False)
+        fenetre.transient(self)
+
+        tk.Label(
+            fenetre,
+            text="Envoyez cette clé dans l'en-tête X-API-Key :",
+            font=("Helvetica", 10),
+        ).pack(padx=16, pady=(14, 6))
+
+        cle = self._api_server.api_key
+        champ = ttk.Entry(fenetre, width=52, justify=tk.CENTER)
+        champ.insert(0, cle)
+        champ.configure(state="readonly")
+        champ.pack(padx=16)
+
+        tk.Label(
+            fenetre,
+            text=f"{self._api_server.url}/api/status",
+            fg="#555",
+            font=("Helvetica", 9),
+        ).pack(pady=(6, 0))
+
+        def copier() -> None:
+            self.clipboard_clear()
+            self.clipboard_append(cle)
+
+        barre = tk.Frame(fenetre)
+        barre.pack(pady=12)
+        ttk.Button(barre, text="Copier la clé", command=copier).pack(side=tk.LEFT, padx=4)
+        ttk.Button(barre, text="Fermer", command=fenetre.destroy).pack(side=tk.LEFT, padx=4)
 
     # ── Alertes ───────────────────────────────────────────────────────────────
 

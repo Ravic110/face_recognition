@@ -136,6 +136,13 @@ class SurveillanceEngine:
     def set_alert_manager(self, alert_mgr) -> None:
         self._alert_mgr = alert_mgr
 
+    # ── État ──────────────────────────────────────────────────────────────────
+
+    @property
+    def is_running(self) -> bool:
+        """Le moteur analyse-t-il actuellement ?"""
+        return self._running
+
     # ── Profil de surveillance ────────────────────────────────────────────────
 
     def apply_profile(self, profile) -> None:
