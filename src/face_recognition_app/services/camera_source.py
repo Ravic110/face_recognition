@@ -14,66 +14,23 @@ from __future__ import annotations
 import logging
 import threading
 import time
-import uuid
 from abc import ABC
-from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
 
+from ..domain.camera import CameraConfig
+
+# CameraConfig est réexporté : l'UI l'importe depuis ce module.
+__all__ = [
+    "CameraConfig",
+    "CameraSource",
+    "IPCameraSource",
+    "WebcamSource",
+    "create_camera_source",
+]
+
 logger = logging.getLogger(__name__)
-
-
-# ── Configuration ────────────────────────────────────────────────────────────
-
-
-@dataclass
-class CameraConfig:
-    """Paramètres persistables d'une caméra."""
-
-    name: str
-    source_type: str  # 'webcam' | 'ip'
-    source: str | int  # index (webcam) ou URL (IP)
-    enabled: bool = True
-    uid: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
-
-    # Résolution souhaitée
-    width: int = 640
-    height: int = 480
-
-    # Zone d'intérêt ROI (x, y, w, h) en pixels, None = toute l'image
-    roi: tuple[int, int, int, int] | None = None
-
-    # Modèle de détection : "hog" (CPU) | "cnn" (GPU/plus précis)
-    detection_model: str = "hog"
-
-    def to_dict(self) -> dict:
-        return {
-            "uid": self.uid,
-            "name": self.name,
-            "source_type": self.source_type,
-            "source": self.source,
-            "enabled": self.enabled,
-            "width": self.width,
-            "height": self.height,
-            "roi": list(self.roi) if self.roi else None,
-            "detection_model": self.detection_model,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> CameraConfig:
-        roi_raw = data.get("roi")
-        return cls(
-            uid=data.get("uid", uuid.uuid4().hex[:8]),
-            name=data["name"],
-            source_type=data["source_type"],
-            source=data["source"],
-            enabled=data.get("enabled", True),
-            width=data.get("width", 640),
-            height=data.get("height", 480),
-            roi=tuple(roi_raw) if roi_raw else None,
-            detection_model=data.get("detection_model", "hog"),
-        )
 
 
 # ── Classe de base ────────────────────────────────────────────────────────────
