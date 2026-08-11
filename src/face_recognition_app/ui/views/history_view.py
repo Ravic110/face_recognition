@@ -1,6 +1,9 @@
 """
-event_browser.py
-Historique et statistiques des événements de surveillance.
+history_view.py
+Vue « Historique » — consultation et statistiques des détections.
+
+Anciennement une fenêtre séparée ; elle vit désormais dans la zone centrale du
+tableau de bord. Le rechargement se fait à l'affichage, pas en continu.
 
 Fonctionnalités :
   - Liste paginée des événements (filtrée par date / caméra / personne)
@@ -19,46 +22,45 @@ from tkinter import messagebox, ttk
 
 from PIL import Image, ImageTk
 
-from .. import theme
-from ..storage.event_store import EventStore, StoredEvent
-from .widgets import Frame, Label
+from ... import theme
+from ...storage.event_repository import EventRepository, StoredEvent
+from ..widgets import Frame, Label
+from .base import AppServices, View, entete_panneau
 
 
-class EventBrowserApp(tk.Toplevel):
-    """Fenêtre de consultation de l'historique des détections."""
+class HistoryView(View):
+    """Consultation de l'historique des détections."""
 
+    TITRE = "HISTORIQUE"
     PAGE_SIZE = 50
 
-    def __init__(self, parent: tk.Widget, event_store: EventStore) -> None:
-        super().__init__(parent)
-        self.title("Historique des détections")
-        self.geometry("1100x680")
-        self.minsize(800, 500)
-
-        self._store = event_store
+    def __init__(self, parent, services: AppServices) -> None:
+        super().__init__(parent, services)
         self._events: list[StoredEvent] = []
         self._photo_refs: list[ImageTk.PhotoImage | None] = []
         self._selected_event: StoredEvent | None = None
 
+    @property
+    def _store(self) -> EventRepository:
+        return self.services.events
+
+    def construire(self) -> None:
         self._build_ui()
+        self._load_events()
+
+    def on_show(self) -> None:
+        # L'historique grossit pendant qu'on est ailleurs : recharger à l'entrée.
         self._load_events()
 
     # ── Interface ─────────────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
-        # Barre de filtres
-        filter_bar = Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
+        # Barre de filtres, sous l'en-tête de panneau
+        entete_panneau(self, "HISTORIQUE DES DÉTECTIONS")
+        filter_bar = Frame(self, bg=theme.BG_BASE, padx=theme.PAD_M, pady=theme.PAD_S)
         filter_bar.pack(fill=tk.X)
 
-        Label(
-            filter_bar,
-            text="Historique",
-            bg=theme.BG_SURFACE,
-            fg=theme.TEXT_PRIMARY,
-            font=theme.FONT_TITLE(),
-        ).pack(side=tk.LEFT, padx=6)
-
-        Label(filter_bar, text="Caméra :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
+        Label(filter_bar, text="Caméra :", bg=theme.BG_BASE, fg=theme.TEXT_SECONDARY).pack(
             side=tk.LEFT, padx=(12, 2)
         )
         self._cam_var = tk.StringVar(value="Toutes")
@@ -68,7 +70,7 @@ class EventBrowserApp(tk.Toplevel):
         self._cam_cb.pack(side=tk.LEFT)
         self._cam_cb.bind("<<ComboboxSelected>>", lambda _: self._load_events())
 
-        Label(filter_bar, text="Personne :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
+        Label(filter_bar, text="Personne :", bg=theme.BG_BASE, fg=theme.TEXT_SECONDARY).pack(
             side=tk.LEFT, padx=(10, 2)
         )
         self._person_var = tk.StringVar()
@@ -86,7 +88,7 @@ class EventBrowserApp(tk.Toplevel):
         Label(
             filter_bar,
             textvariable=self._count_var,
-            bg=theme.BG_SURFACE,
+            bg=theme.BG_BASE,
             fg=theme.TEXT_SECONDARY,
             font=theme.FONT_SMALL(),
         ).pack(side=tk.RIGHT, padx=10)
