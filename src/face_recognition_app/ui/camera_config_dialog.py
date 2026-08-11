@@ -16,6 +16,7 @@ from tkinter import messagebox, ttk
 
 from .. import theme
 from ..services.camera_source import CameraConfig
+from .widgets import Frame, Label
 
 
 class CameraConfigDialog(tk.Toplevel):
@@ -63,30 +64,30 @@ class CameraConfigDialog(tk.Toplevel):
         pad = {"padx": 12, "pady": 6}
 
         # ── Titre interne
-        header = tk.Frame(self, bg=theme.BG_SURFACE)
+        header = Frame(self, bg=theme.BG_SURFACE)
         header.pack(fill=tk.X)
-        tk.Label(
+        Label(
             header,
             text="Ajouter / Modifier une caméra",
             bg=theme.BG_SURFACE,
             fg=theme.TEXT_PRIMARY,
-            font=theme.FONT_TITLE,
+            font=theme.FONT_TITLE(),
             pady=10,
         ).pack()
 
-        form = tk.Frame(self, padx=16, pady=12)
+        form = Frame(self, padx=16, pady=12)
         form.pack(fill=tk.BOTH, expand=True)
 
         # Nom
-        tk.Label(form, text="Nom de la caméra :").grid(row=0, column=0, sticky=tk.W, **pad)
+        Label(form, text="Nom de la caméra :").grid(row=0, column=0, sticky=tk.W, **pad)
         self._name_var = tk.StringVar()
         ttk.Entry(form, textvariable=self._name_var, width=34).grid(
             row=0, column=1, sticky=tk.EW, **pad
         )
 
         # Type
-        tk.Label(form, text="Type :").grid(row=1, column=0, sticky=tk.W, **pad)
-        type_frame = tk.Frame(form)
+        Label(form, text="Type :").grid(row=1, column=0, sticky=tk.W, **pad)
+        type_frame = Frame(form)
         type_frame.grid(row=1, column=1, sticky=tk.W, **pad)
         ttk.Radiobutton(
             type_frame,
@@ -104,36 +105,36 @@ class CameraConfigDialog(tk.Toplevel):
         ).pack(side=tk.LEFT)
 
         # Source (index ou URL)
-        tk.Label(form, text="Source :").grid(row=2, column=0, sticky=tk.W, **pad)
+        Label(form, text="Source :").grid(row=2, column=0, sticky=tk.W, **pad)
         self._source_var = tk.StringVar(value="0")
         self._source_entry = ttk.Entry(form, textvariable=self._source_var, width=34)
         self._source_entry.grid(row=2, column=1, sticky=tk.EW, **pad)
 
         # Aide contextuelle
         self._hint_var = tk.StringVar()
-        tk.Label(
+        Label(
             form,
             textvariable=self._hint_var,
             fg="gray",
             wraplength=280,
             justify=tk.LEFT,
-            font=theme.FONT_SMALL,
+            font=theme.FONT_SMALL(),
         ).grid(row=3, column=1, sticky=tk.W, padx=12, pady=(0, 6))
 
         # Résolution
-        res_frame = tk.Frame(form)
+        res_frame = Frame(form)
         res_frame.grid(row=4, column=1, sticky=tk.W, **pad)
-        tk.Label(form, text="Résolution :").grid(row=4, column=0, sticky=tk.W, **pad)
+        Label(form, text="Résolution :").grid(row=4, column=0, sticky=tk.W, **pad)
         self._width_var = tk.StringVar(value="640")
         self._height_var = tk.StringVar(value="480")
         ttk.Entry(res_frame, textvariable=self._width_var, width=6).pack(side=tk.LEFT)
-        tk.Label(res_frame, text=" × ").pack(side=tk.LEFT)
+        Label(res_frame, text=" × ").pack(side=tk.LEFT)
         ttk.Entry(res_frame, textvariable=self._height_var, width=6).pack(side=tk.LEFT)
 
         # Modèle de détection
-        tk.Label(form, text="Modèle détection :").grid(row=5, column=0, sticky=tk.W, **pad)
+        Label(form, text="Modèle détection :").grid(row=5, column=0, sticky=tk.W, **pad)
         self._model_var = tk.StringVar(value="hog")
-        model_frame = tk.Frame(form)
+        model_frame = Frame(form)
         model_frame.grid(row=5, column=1, sticky=tk.W, **pad)
         ttk.Radiobutton(
             model_frame, text="HOG (CPU, rapide)", variable=self._model_var, value="hog"
@@ -146,7 +147,7 @@ class CameraConfigDialog(tk.Toplevel):
         roi_lf = ttk.LabelFrame(form, text="Zone d'intérêt (ROI) — optionnel")
         roi_lf.grid(row=6, column=0, columnspan=2, sticky=tk.EW, padx=12, pady=6)
 
-        tk.Label(
+        Label(
             roi_lf,
             text="Laisser vide pour analyser toute l'image.",
             fg="gray",
@@ -154,7 +155,7 @@ class CameraConfigDialog(tk.Toplevel):
         ).grid(row=0, column=0, columnspan=8, sticky=tk.W, padx=4)
         self._roi_vars = {k: tk.StringVar(value="") for k in ("x", "y", "w", "h")}
         for i, (lbl, key) in enumerate([("X", "x"), ("Y", "y"), ("L", "w"), ("H", "h")]):
-            tk.Label(roi_lf, text=f"{lbl}:").grid(row=1, column=i * 2, padx=(6 if i == 0 else 2, 0))
+            Label(roi_lf, text=f"{lbl}:").grid(row=1, column=i * 2, padx=(6 if i == 0 else 2, 0))
             ttk.Entry(roi_lf, textvariable=self._roi_vars[key], width=6).grid(
                 row=1, column=i * 2 + 1, padx=(0, 4), pady=4
             )
@@ -166,7 +167,7 @@ class CameraConfigDialog(tk.Toplevel):
         )
 
         # Boutons
-        btn_frame = tk.Frame(self)
+        btn_frame = Frame(self)
         btn_frame.pack(fill=tk.X, padx=16, pady=(4, 14))
         ttk.Button(btn_frame, text="Annuler", command=self.destroy).pack(side=tk.RIGHT, padx=4)
         ttk.Button(btn_frame, text="Valider", command=self._validate).pack(side=tk.RIGHT)

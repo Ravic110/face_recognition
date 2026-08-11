@@ -26,6 +26,7 @@ from PIL import Image, ImageTk
 from .. import theme
 from ..core.utils import is_duplicate, save_face_encoding
 from ..storage.encodings_store import load_existing_encodings
+from .widgets import Canvas, Frame, Label, Text
 
 logger = logging.getLogger(__name__)
 
@@ -72,15 +73,15 @@ class ImageImporterApp(tk.Toplevel):
 
     def _build_ui(self) -> None:
         # ── Barre de contrôle supérieure
-        top = tk.Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
+        top = Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
         top.pack(fill=tk.X)
 
-        tk.Label(
+        Label(
             top,
             text="Import d'images",
             bg=theme.BG_SURFACE,
             fg=theme.TEXT_PRIMARY,
-            font=theme.FONT_TITLE,
+            font=theme.FONT_TITLE(),
         ).pack(side=tk.LEFT, padx=6)
 
         ttk.Button(top, text="Sélectionner des images", command=self._browse_images).pack(
@@ -90,12 +91,12 @@ class ImageImporterApp(tk.Toplevel):
         ttk.Button(top, text="Suivante ▶", command=self._next_image).pack(side=tk.LEFT, padx=4)
 
         self._counter_var = tk.StringVar(value="–")
-        tk.Label(
+        Label(
             top,
             textvariable=self._counter_var,
             bg=theme.BG_SURFACE,
             fg=theme.TEXT_SECONDARY,
-            font=theme.FONT_BODY,
+            font=theme.FONT_BODY(),
         ).pack(side=tk.LEFT, padx=8)
 
         # ── Corps principal
@@ -103,10 +104,10 @@ class ImageImporterApp(tk.Toplevel):
         body.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
         # Panneau gauche : aperçu image
-        left = tk.Frame(body, bg=theme.BG_SURFACE)
+        left = Frame(body, bg=theme.BG_SURFACE)
         body.add(left, minsize=400)
 
-        self._canvas = tk.Canvas(
+        self._canvas = Canvas(
             left,
             bg=theme.BG_SURFACE,
             cursor="crosshair",
@@ -118,23 +119,23 @@ class ImageImporterApp(tk.Toplevel):
 
         # Barre de statut image
         self._img_status = tk.StringVar(value="Sélectionnez des images pour commencer.")
-        tk.Label(
+        Label(
             left,
             textvariable=self._img_status,
             bg=theme.BG_BASE,
             fg=theme.TEXT_SECONDARY,
-            font=theme.FONT_SMALL,
+            font=theme.FONT_SMALL(),
             anchor=tk.W,
         ).pack(fill=tk.X, padx=4, pady=2)
 
         # Panneau droit : sélection et enregistrement
-        right = tk.Frame(body, padx=10, pady=8)
+        right = Frame(body, padx=10, pady=8)
         body.add(right, minsize=240)
 
-        tk.Label(right, text="Visages détectés", font=("Helvetica", 11, "bold")).pack(anchor=tk.W)
+        Label(right, text="Visages détectés", font=("Helvetica", 11, "bold")).pack(anchor=tk.W)
 
         # Liste des visages
-        list_frame = tk.Frame(right, relief=tk.GROOVE, bd=1)
+        list_frame = Frame(right, relief=tk.GROOVE, bd=1)
         list_frame.pack(fill=tk.X, pady=6)
 
         self._face_listbox = tk.Listbox(
@@ -147,16 +148,20 @@ class ImageImporterApp(tk.Toplevel):
         info_lf = ttk.LabelFrame(right, text="Informations")
         info_lf.pack(fill=tk.X, pady=4)
         self._info_var = tk.StringVar(value="–")
-        tk.Label(
-            info_lf, textvariable=self._info_var, justify=tk.LEFT, font=theme.FONT_SMALL, fg="gray"
+        Label(
+            info_lf,
+            textvariable=self._info_var,
+            justify=tk.LEFT,
+            font=theme.FONT_SMALL(),
+            fg="gray",
         ).pack(anchor=tk.W, padx=6, pady=4)
 
         # Aperçu du visage sélectionné
-        self._face_preview_label = tk.Label(right, bg=theme.BG_BASE, width=10, height=5)
+        self._face_preview_label = Label(right, bg=theme.BG_BASE, width=10, height=5)
         self._face_preview_label.pack(pady=4)
 
         # Saisie du nom
-        tk.Label(right, text="Nom de la personne :").pack(anchor=tk.W, pady=(8, 2))
+        Label(right, text="Nom de la personne :").pack(anchor=tk.W, pady=(8, 2))
         self._name_var = tk.StringVar()
         self._name_entry = ttk.Entry(right, textvariable=self._name_var, width=28)
         self._name_entry.pack(fill=tk.X)
@@ -167,13 +172,13 @@ class ImageImporterApp(tk.Toplevel):
         )
 
         # Journal de cette session
-        tk.Label(right, text="Journal de session", font=("Helvetica", 10, "bold")).pack(
+        Label(right, text="Journal de session", font=("Helvetica", 10, "bold")).pack(
             anchor=tk.W, pady=(10, 2)
         )
-        log_frame = tk.Frame(right, relief=tk.GROOVE, bd=1)
+        log_frame = Frame(right, relief=tk.GROOVE, bd=1)
         log_frame.pack(fill=tk.BOTH, expand=True)
-        self._log_text = tk.Text(
-            log_frame, height=6, state=tk.DISABLED, font=theme.FONT_MONO, bg=theme.BG_SURFACE
+        self._log_text = Text(
+            log_frame, height=6, state=tk.DISABLED, font=theme.FONT_MONO(), bg=theme.BG_SURFACE
         )
         log_scroll = ttk.Scrollbar(log_frame, command=self._log_text.yview)
         self._log_text.configure(yscrollcommand=log_scroll.set)

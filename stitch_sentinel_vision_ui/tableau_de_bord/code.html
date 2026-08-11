@@ -1,0 +1,294 @@
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><style>@layer base{html,body{margin:0;padding:0;overflow-x:hidden;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface":"#051424","primary-container":"#0b1120","surface-dim":"#051424","secondary-fixed-dim":"#4ae176","surface-container-lowest":"#010f1f","surface-tint":"#c1c6db","background":"#051424","surface-container-highest":"#273647","surface-container-high":"#1c2b3c","tertiary-fixed-dim":"#ffb3ad","inverse-surface":"#d4e4fa","surface-container-low":"#0d1c2d","on-secondary":"#003915","on-tertiary-container":"#e63d3e","outline":"#909097","primary":"#c1c6db","on-primary":"#2a3040","on-background":"#d4e4fa","error-container":"#93000a","on-secondary-fixed":"#002109","inverse-primary":"#585e70","surface-container":"#122131","tertiary-fixed":"#ffdad7","surface-variant":"#273647","primary-fixed":"#dde2f8","on-tertiary-fixed-variant":"#930013","secondary-fixed":"#6bff8f","on-error-container":"#ffdad6","on-tertiary":"#68000a","on-tertiary-fixed":"#410004","primary-fixed-dim":"#c1c6db","on-primary-fixed":"#151b2b","outline-variant":"#45464c","on-surface":"#d4e4fa","on-primary-fixed-variant":"#414658","secondary-container":"#00b954","tertiary-container":"#2e0002","tertiary":"#ffb3ad","on-surface-variant":"#c6c6cd","on-error":"#690005","on-secondary-container":"#004119","surface-bright":"#2c3a4c","on-primary-container":"#777c90","inverse-on-surface":"#233143","on-secondary-fixed-variant":"#005321","secondary":"#4ae176","error":"#ffb4ab"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"container-padding":"16px","panel-gap":"8px","gutter":"1px","grid-unit":"4px"},"fontFamily":{"body-sm":["Inter"],"label-caps":["Inter"],"data-mono":["JetBrains Mono"],"headline-md":["Inter"],"display-lg":["Inter"]},"fontSize":{"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"label-caps":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"700"}],"data-mono":["14px",{"lineHeight":"20px","fontWeight":"500"}],"headline-md":["20px",{"lineHeight":"28px","fontWeight":"600"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}]}}}}</script><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/></head><body class="bg-background font-body-sm text-on-background min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant"><div class="h-14 w-full px-container-padding flex items-center justify-between border-b border-outline-variant/30"><div class="flex items-center gap-4"><img alt="Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLtpwzwIBMZfrFIWCkRTyC94x1GH3qCJ6Xnb72jJCis0HbqJSfh41MR06VjXLwd5bFg4-gwB_bMx1Enkbi8ZrnwnulEbTAiSqlWFmGjlyqf6XEVogT1RWbfAVUk2w79VPC3rsTLkF9afS7Xu4enwaKuktzrQqpLE3UahtXzPe8zEbp-w7VjWX22l2d0vt5nsN1iplWjF8824RuMcuun_oMw3FKS5Js1y5Q43T9zAV2O2XSc6UwYB6Yk3mQM"/><span class="font-headline-md text-headline-md text-on-surface tracking-tight">SURVEILLANCE</span><div class="flex items-center gap-2 ml-4"><button class="h-8 px-3 border border-secondary text-secondary font-label-caps text-label-caps hover:bg-secondary hover:text-on-secondary transition-colors">START</button><button class="h-8 px-3 border border-outline-variant text-outline-variant font-label-caps text-label-caps cursor-not-allowed" disabled="">STOP</button></div></div><div class="flex items-center gap-4"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div><div class="h-12 w-full px-container-padding flex items-center justify-between bg-surface-container-low"><nav class="flex items-center gap-8 h-full" data-active-classes="text-secondary border-b-2 border-secondary"><a aria-current="page" class="h-full flex items-center px-1 font-label-caps transition-all text-secondary border-b-2 border-secondary" data-path="tableau-de-bord" href="#">TABLEAU DE BORD</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="historique" href="#">HISTORIQUE</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="base-de-visages" href="#">BASE DE VISAGES</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="alertes" href="#">ALERTES</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="configuration" href="#">CONFIGURATION</a></nav><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><button class="font-label-caps text-label-caps text-on-surface-variant hover:text-secondary">API v2.4.0</button></div></div><div class="h-8 w-full px-container-padding flex items-center bg-surface-container-lowest border-t border-outline-variant/20"><span class="font-data-mono text-[10px] text-secondary tracking-widest uppercase">SYSTEM STATUS:</span><span class="font-data-mono text-[10px] text-on-surface-variant ml-2">Prêt. Démarrez la surveillance.</span></div></header><main class="pt-[136px] w-full min-h-screen bg-background"><div class="flex flex-col w-full h-[calc(100vh-136px)] text-on-surface p-container-padding gap-panel-gap relative bg-background">
+<!-- Desktop Grid Layout: Side-by-side Resizable Panels -->
+<div class="flex flex-row w-full h-full gap-panel-gap" id="resizer-container">
+<!-- Left Panel: Camera Grid (Flex 2 by default) -->
+<div class="flex-2 min-w-[300px] h-full flex flex-col gap-panel-gap" style="flex: 2;">
+<!-- Header Left Panel -->
+<div class="h-8 flex items-center justify-between border-b border-outline-variant/30 px-2 shrink-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">grid_view</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">FLUX VIDÉO EN DIRECT</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-data-mono text-[10px] text-on-surface-variant">GRILLE: 2x2</span>
+<button class="w-6 h-6 flex items-center justify-center border border-outline-variant/50 hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant group-hover:text-on-surface">settings</span>
+</button>
+</div>
+</div>
+<!-- 2x2 Grid -->
+<div class="grid grid-cols-2 grid-rows-2 gap-panel-gap flex-grow h-[calc(100%-40px)]">
+<!-- Tile 1: Live Feed with Detection -->
+<div class="relative bg-surface-container-low border border-outline-variant/20 flex flex-col overflow-hidden group">
+<div class="absolute inset-0 bg-cover bg-center opacity-40 z-0" data-alt="Security camera view of a modern office main entrance lobby, high contrast, technical overlay style, muted colors, security footage aesthetic" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCaI5xjeVZ0XNfiN2HMbrNoArsj3XrXtvEdKFcwXu-pkcQMt1DHU0EdHz1JyNXMJ52yV2Y5oWev8vqSdA-sx8P8SnPR_2pbJg8MI0NztbLUyOtIFyTvjCpJh8apu5t6l1hu3GMYmI3qXDy5uPkI_2kXkiySREY07AR23fOBuCzi9u8WiZYPGHoh3HfRfMe2pCubSjSTDNc6Vt3EzWC5clc827aHS8fsb_UQ0MEDxunsZXUXOpJGLkLLqQ')"></div>
+<!-- Scanline Overlay -->
+<div class="absolute inset-0 pointer-events-none z-10" style="background: repeating-linear-gradient(transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);"></div>
+<!-- Overlay Header -->
+<div class="relative z-20 h-6 px-2 flex items-center justify-between bg-surface-container-highest/80 backdrop-blur-sm border-b border-outline-variant/30">
+<span class="font-label-caps text-[10px] text-on-surface tracking-widest">CAM 01: ENTRÉE PRINCIPALE</span>
+<div class="flex items-center gap-2">
+<span class="font-data-mono text-[10px] text-secondary">30 FPS</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+</div>
+</div>
+<!-- Bounding Box (Face Detection) -->
+<div class="absolute top-1/4 left-1/3 w-32 h-40 border border-secondary z-20 group-hover:bg-secondary/10 transition-colors pointer-events-none">
+<!-- Corners -->
+<div class="absolute -top-[1px] -left-[1px] w-2 h-2 border-t-2 border-l-2 border-secondary"></div>
+<div class="absolute -top-[1px] -right-[1px] w-2 h-2 border-t-2 border-r-2 border-secondary"></div>
+<div class="absolute -bottom-[1px] -left-[1px] w-2 h-2 border-b-2 border-l-2 border-secondary"></div>
+<div class="absolute -bottom-[1px] -right-[1px] w-2 h-2 border-b-2 border-r-2 border-secondary"></div>
+<!-- Label -->
+<div class="absolute -top-5 left-0 bg-secondary px-1 py-0.5">
+<span class="font-data-mono text-[9px] text-on-secondary block leading-none">ID:4892 MATCH</span>
+</div>
+</div>
+<!-- Bottom Data -->
+<div class="absolute bottom-0 left-0 w-full p-2 z-20 flex justify-between items-end bg-gradient-to-t from-background/90 to-transparent">
+<span class="font-data-mono text-[10px] text-on-surface-variant">REC <span class="text-error animate-pulse material-symbols-outlined text-[10px] align-middle">fiber_manual_record</span></span>
+<span class="font-data-mono text-[10px] text-on-surface-variant" id="live-time-1">14:22:05:12</span>
+</div>
+</div>
+<!-- Tile 2: Loading -->
+<div class="relative bg-surface-container-low border border-outline-variant/20 flex flex-col justify-center items-center">
+<div class="absolute top-0 left-0 w-full h-6 px-2 flex items-center justify-between bg-surface-container-highest/50 border-b border-outline-variant/20">
+<span class="font-label-caps text-[10px] text-on-surface-variant tracking-widest">CAM 02: BUREAU A1</span>
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
+</div>
+<div class="flex flex-col items-center gap-3 mt-4">
+<span class="material-symbols-outlined text-[32px] text-tertiary-fixed-dim animate-spin" style="animation-duration: 2s;">sync</span>
+<span class="font-data-mono text-[11px] text-tertiary-fixed-dim tracking-wider uppercase">Connexion...</span>
+</div>
+<!-- Fake Progress bar -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-outline-variant/30">
+<div class="h-full bg-tertiary-fixed-dim w-1/3 animate-pulse"></div>
+</div>
+</div>
+<!-- Tile 3: Offline -->
+<div class="relative bg-surface-container border border-error-container/30 flex flex-col justify-center items-center">
+<!-- Scanline noise -->
+<div class="absolute inset-0 opacity-10 bg-error mix-blend-color" style="background-image: repeating-radial-gradient(circle at 17% 32%, transparent 0, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 3px);"></div>
+<div class="absolute top-0 left-0 w-full h-6 px-2 flex items-center justify-between bg-error-container/20 border-b border-error-container/30 z-10">
+<span class="font-label-caps text-[10px] text-error tracking-widest">CAM 03: PARKING NORD</span>
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+</div>
+<div class="flex flex-col items-center gap-2 z-10">
+<span class="material-symbols-outlined text-[40px] text-error">videocam_off</span>
+<div class="bg-error-container px-2 py-1 border border-error/50">
+<span class="font-data-mono text-[10px] text-on-error-container tracking-widest">HORS LIGNE: PAS DE SIGNAL</span>
+</div>
+</div>
+</div>
+<!-- Tile 4: Placeholder/Add -->
+<div class="relative bg-surface-container-low border border-dashed border-outline-variant/40 flex flex-col justify-center items-center hover:border-primary/50 hover:bg-surface-container transition-all cursor-pointer group">
+<div class="absolute top-0 left-0 w-full h-6 px-2 flex items-center justify-between bg-transparent border-b border-outline-variant/20 group-hover:border-primary/20">
+<span class="font-label-caps text-[10px] text-on-surface-variant tracking-widest">CAM 04: ZONE DOCK</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">add</span>
+</div>
+<div class="flex flex-col items-center gap-3">
+<div class="w-12 h-12 rounded-full border border-outline-variant/50 flex items-center justify-center group-hover:border-primary group-hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined text-[24px] text-on-surface-variant group-hover:text-primary">videocam</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant group-hover:text-primary transition-colors">AJOUTER CAMERA</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Resizer Handler (Visual only for HTML, JS logic below) -->
+<div class="w-[4px] bg-transparent hover:bg-outline-variant/50 cursor-col-resize flex-shrink-0 flex flex-col justify-center items-center group active:bg-primary/50 transition-colors" id="drag-handle">
+<div class="h-8 w-[1px] bg-outline-variant group-hover:bg-on-surface"></div>
+<div class="h-8 w-[1px] bg-outline-variant group-hover:bg-on-surface mt-1"></div>
+</div>
+<!-- Right Panel: Event Log (Flex 1 by default) -->
+<div class="flex-1 min-w-[280px] h-full flex flex-col bg-surface-container border border-outline-variant/20" style="flex: 1;">
+<!-- Header Right Panel -->
+<div class="h-10 flex items-center justify-between border-b border-outline-variant/30 px-3 shrink-0 bg-surface-container-highest">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface">list_alt</span>
+<span class="font-label-caps text-[12px] text-on-surface tracking-widest">JOURNAL DES ÉVÉNEMENTS</span>
+</div>
+<span class="bg-secondary/10 text-secondary font-data-mono text-[10px] px-2 py-0.5 border border-secondary/20">LIVE</span>
+</div>
+<!-- Filter Bar -->
+<div class="h-8 flex items-center border-b border-outline-variant/20 px-2 gap-2 bg-surface-container-low shrink-0">
+<button class="h-5 px-2 bg-secondary text-on-secondary font-label-caps text-[9px] border border-secondary hover:bg-secondary-fixed transition-colors">TOUT</button>
+<button class="h-5 px-2 bg-transparent text-on-surface-variant font-label-caps text-[9px] border border-outline-variant hover:border-on-surface-variant transition-colors">ALERTES</button>
+<button class="h-5 px-2 bg-transparent text-on-surface-variant font-label-caps text-[9px] border border-outline-variant hover:border-on-surface-variant transition-colors">RECONNUS</button>
+<div class="flex-grow"></div>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant cursor-pointer hover:text-on-surface">filter_list</span>
+</div>
+<!-- Event List -->
+<div class="flex-1 overflow-y-auto overflow-x-hidden p-2 flex flex-col gap-2 custom-scrollbar relative">
+<!-- Continuous Line connecting events -->
+<div class="absolute left-4 top-2 bottom-2 w-[1px] bg-outline-variant/30 z-0"></div>
+<!-- Event Card 1: Face Detected (Green) -->
+<div class="relative z-10 flex gap-3 group">
+<!-- Timeline Node -->
+<div class="mt-2 w-4 h-4 rounded-full bg-surface-container border border-secondary flex items-center justify-center shrink-0">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span>
+</div>
+<!-- Card Content -->
+<div class="flex-1 border border-secondary/40 bg-surface-container-low p-2 hover:bg-surface-container transition-colors cursor-pointer group-hover:border-secondary">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">face</span>
+<span class="font-data-mono text-[11px] text-secondary uppercase tracking-wide">Visage Reconnu</span>
+</div>
+<span class="font-data-mono text-[10px] text-on-surface-variant">14:22:05</span>
+</div>
+<div class="flex items-center gap-3 mt-2">
+<!-- Thumbnail -->
+<div class="w-10 h-10 border border-outline-variant/50 bg-surface shrink-0 overflow-hidden relative">
+<div class="absolute inset-0 bg-cover bg-center grayscale contrast-125" data-alt="Close up crop of a man's face, security camera footage style, low resolution, high contrast" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBjE7AHo4WyTy-Tai2-yZiotLB0GdpgVRAo40FWDRHSXTigJbemvk9BKigwS8TiO769pcb68nyYhuyUtgZrVwBSAMgsWNaTOwfiFfw9xtQoFLPPhesPD5AKb_kxPOsc6EquJGhty_GUL0a7ITnXnqu_17YHHR-YtzRH8q0ApgiaI6H8uxxiehzf8MJGg9-ZFeWeEqw3ZomdjiO_EAFnCwpyEc4Cruwdv2fEHv-_WmwlCy8utzoSyVUP-w')"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-[14px] text-on-surface leading-tight">Jean Dupont</span>
+<span class="font-label-caps text-[9px] text-on-surface-variant mt-0.5">EMPLOYÉ - R&D (NIV 3)</span>
+<span class="font-data-mono text-[9px] text-outline mt-1">ID:4892 | CAM:01</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Event Card 2: Intrusion Alert (Red) -->
+<div class="relative z-10 flex gap-3 group">
+<!-- Timeline Node -->
+<div class="mt-2 w-4 h-4 rounded-full bg-error-container border border-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[12px] text-on-error-container font-bold">warning</span>
+</div>
+<!-- Card Content -->
+<div class="flex-1 border border-error/50 bg-error/5 p-2 hover:bg-error/10 transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-error">gpp_bad</span>
+<span class="font-data-mono text-[11px] text-error uppercase tracking-wide font-bold">Alerte Intrusion</span>
+</div>
+<span class="font-data-mono text-[10px] text-error">14:21:40</span>
+</div>
+<div class="flex items-center gap-3 mt-2">
+<!-- Thumbnail -->
+<div class="w-10 h-10 border border-error/50 bg-error-container shrink-0 overflow-hidden relative">
+<div class="absolute inset-0 bg-cover bg-center grayscale mix-blend-luminosity opacity-80" data-alt="Blurry security footage of an unidentified person wearing a hood, dark setting, red tint overlay" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBJy6gONa2rrvxrXlHbmjE-NEA7Y1shuoTgQsdl_1f1RErnzWQnmYHGUIJMtNCcZxs8ZpJ_tkBoi_lxiAamHJeRaqOXMx1FG6wfNF7rCs9NjWl-S4j0JGQba8Z2bmGfJhSnSZCDCtVl7m7-6oZpcuEVD3XKPzxGiVVXSesvpz0EJoCyteiPImSU1X2N7pMH05MZiTTePjH4aYDUb4z-K4lmjzkHNNsD8EuFKeqJhn4hdtEtFZnd-qU14g')"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-[14px] text-on-error-container leading-tight">Inconnu</span>
+<span class="font-label-caps text-[9px] text-error mt-0.5">ACCÈS NON AUTORISÉ</span>
+<span class="font-data-mono text-[9px] text-error/70 mt-1">ZONE SÉCURISÉE B | CAM:02</span>
+</div>
+</div>
+<div class="mt-2 flex gap-2">
+<button class="h-6 px-2 border border-error text-error font-label-caps text-[9px] hover:bg-error hover:text-on-error transition-colors flex-1">INTERVENIR</button>
+<button class="h-6 px-2 border border-outline-variant text-on-surface-variant font-label-caps text-[9px] hover:border-on-surface transition-colors">IGNORER</button>
+</div>
+</div>
+</div>
+<!-- Event Card 3: Generic Motion (Neutral) -->
+<div class="relative z-10 flex gap-3 group opacity-70 hover:opacity-100 transition-opacity">
+<!-- Timeline Node -->
+<div class="mt-2 w-4 h-4 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center shrink-0">
+<span class="w-1.5 h-1.5 bg-outline-variant rounded-full"></span>
+</div>
+<!-- Card Content -->
+<div class="flex-1 border border-outline-variant/30 bg-surface-container-low p-2 hover:border-outline-variant/60 transition-colors cursor-pointer">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">directions_run</span>
+<span class="font-data-mono text-[10px] text-on-surface-variant uppercase tracking-wide">Mouvement Détecté</span>
+</div>
+<span class="font-data-mono text-[10px] text-on-surface-variant">14:18:12</span>
+</div>
+<div class="mt-1">
+<span class="font-data-mono text-[9px] text-outline">CAM:01 ENTRÉE PRINCIPALE</span>
+</div>
+</div>
+</div>
+<!-- Terminal Feed at bottom of list -->
+<div class="mt-auto pt-4 relative z-10">
+<div class="border border-outline-variant/20 bg-[#020810] p-2 flex flex-col font-data-mono text-[9px] text-on-surface-variant leading-relaxed h-24 overflow-hidden relative">
+<div class="absolute inset-0 pointer-events-none z-10" style="background: repeating-linear-gradient(transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px);"></div>
+<span class="text-primary/70">> init v2.4.0 ... OK</span>
+<span>> loading modules ... 4/4</span>
+<span>> stream_sync(cam_01) ... ESTABLISHED</span>
+<span class="text-tertiary-fixed-dim">> ping(cam_02) ... TIMEOUT [30s]</span>
+<span class="text-error">> error: connection_lost(cam_03)</span>
+<span class="text-secondary">> face_match_found: ID=4892 (98.4%)</span>
+<span class="animate-pulse">_</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Inline Styles for Custom Scrollbar -->
+<style>
+      .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+          display: block;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255,255,255,0.02);
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #45464c; /* outline-variant */
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #909097; /* outline */
+      }
+  </style>
+<!-- Javascript for Resizer and Live Time -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Live Time Update
+        const timeEl = document.getElementById('live-time-1');
+        if(timeEl) {
+            setInterval(() => {
+                const now = new Date();
+                const ms = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0');
+                timeEl.innerText = now.toTimeString().split(' ')[0] + ':' + ms;
+            }, 100);
+        }
+
+        // Resizer Logic
+        const container = document.getElementById('resizer-container');
+        const leftPanel = container.children[0];
+        const resizer = document.getElementById('drag-handle');
+        const rightPanel = container.children[2];
+
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            // Disable text selection while dragging
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            // Calculate new flex basis based on mouse position relative to container
+            const containerRect = container.getBoundingClientRect();
+            // Restrict resizing to reasonable bounds (e.g., between 20% and 80%)
+            let newLeftWidth = e.clientX - containerRect.left;
+            
+            const minWidth = 300;
+            const maxWidth = containerRect.width - 280; // Leaving room for right panel min-width
+
+            if (newLeftWidth < minWidth) newLeftWidth = minWidth;
+            if (newLeftWidth > maxWidth) newLeftWidth = maxWidth;
+
+            // Use flex-basis for cleaner resizing in flex container
+            leftPanel.style.flex = `0 0 ${newLeftWidth}px`;
+            rightPanel.style.flex = '1 1 0%';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    });
+  </script>
+</div></main></body></html>

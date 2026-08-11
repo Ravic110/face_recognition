@@ -39,7 +39,12 @@ TEXT_PRIMARY = "#F8FAFC"  # blanc cassé
 TEXT_SECONDARY = "#94A3B8"  # gris bleuté — libellés, métadonnées
 
 # Marque et accents
-BRAND_PRIMARY = "#2563EB"  # bleu électrique — action principale
+# Les maquettes font du vert l'accent de marque — c'est lui qui donne le
+# caractère « poste de contrôle » : démarrage, onglet actif, pastille d'API.
+# Il porte donc deux rôles à la fois, marque et état sain, comme dans la
+# maquette. Le bleu recule sur la sélection et les liens.
+BRAND_ACCENT = "#22C55E"  # vert signal — action principale, onglet actif
+BRAND_PRIMARY = "#2563EB"  # bleu électrique — sélection, liens
 ACCENT_AI = "#06B6D4"  # cyan — indicateurs d'analyse
 
 # États
@@ -48,8 +53,14 @@ STATE_WARN = "#F59E0B"  # orange — attention, reconnexion
 STATE_DANGER = "#EF4444"  # rouge — intrusion, panne
 AI_TRACKING = "#8B5CF6"  # violet — personne suivie
 
-# Dérivés — bordures et survol, calés sur les fonds pour rester cohérents
-BORDER = BG_CARD
+# Bordures — la profondeur passe par des traits de 1 px, jamais par des ombres.
+# Deux niveaux : `BORDER` cerne les panneaux, `BORDER_SUBTLE` sépare les lignes
+# d'une même liste. Un seul niveau ne suffit pas — une bordure de la couleur des
+# cartes serait invisible sur une carte.
+# En-tête de panneau en anomalie : rouge très désaturé, lisible sans crier.
+HEADER_ALERT = "#2A1518"
+BORDER = "#334155"
+BORDER_SUBTLE = "#1E293B"
 SURFACE_HOVER = "#243449"
 
 
@@ -67,30 +78,108 @@ def tokens() -> dict[str, str]:
         "STATE_WARN": STATE_WARN,
         "STATE_DANGER": STATE_DANGER,
         "AI_TRACKING": AI_TRACKING,
+        "BRAND_ACCENT": BRAND_ACCENT,
+        "HEADER_ALERT": HEADER_ALERT,
         "BORDER": BORDER,
+        "BORDER_SUBTLE": BORDER_SUBTLE,
         "SURFACE_HOVER": SURFACE_HOVER,
     }
 
 
 # ── Polices ───────────────────────────────────────────────────────────────────
 
-_FAMILLE = "Helvetica"
+# Les maquettes demandent Inter et JetBrains Mono. Aucune des deux n'est
+# garantie sur un poste Linux — et « Helvetica » ne l'est pas davantage, Tk la
+# substituant alors en silence. On résout donc la première famille réellement
+# installée, par ordre de préférence.
+_PREF_SANS = ("Inter", "Noto Sans", "DejaVu Sans", "Liberation Sans", "Ubuntu", "TkDefaultFont")
+_PREF_MONO = (
+    "JetBrains Mono",
+    "DejaVu Sans Mono",
+    "Liberation Mono",
+    "Ubuntu Mono",
+    "TkFixedFont",
+)
 
-FONT_TITLE = (_FAMILLE, 15, "bold")
-FONT_HEADING = (_FAMILLE, 11, "bold")
-FONT_BODY = (_FAMILLE, 10)
-FONT_SMALL = (_FAMILLE, 9)
-FONT_BADGE = (_FAMILLE, 8, "bold")
-FONT_MONO = ("Courier", 9)
+
+def _premiere_disponible(preferences: tuple[str, ...], defaut: str) -> str:
+    """
+    Première famille de polices installée parmi les préférences.
+
+    Retourne `defaut` si Tk n'est pas joignable — le module doit rester
+    importable sans écran.
+    """
+    try:
+        from tkinter import font as tkfont
+
+        installees = set(tkfont.families())
+    except Exception:
+        return defaut
+    return next((f for f in preferences if f in installees), defaut)
+
+
+_sans: str | None = None
+_mono: str | None = None
+
+
+def font_sans() -> str:
+    """Famille sans-serif retenue, résolue une seule fois."""
+    global _sans
+    if _sans is None:
+        _sans = _premiere_disponible(_PREF_SANS, "TkDefaultFont")
+    return _sans
+
+
+def font_mono() -> str:
+    """Famille monospace retenue, résolue une seule fois."""
+    global _mono
+    if _mono is None:
+        _mono = _premiere_disponible(_PREF_MONO, "TkFixedFont")
+    return _mono
+
+
+# Échelle dense, calquée sur les maquettes : peu de tailles, beaucoup de
+# contraste par la graisse et la casse.
+def FONT_TITLE() -> tuple:  # noqa: N802 — jetons de thème, pas des classes
+    return (font_sans(), 17, "bold")
+
+
+def FONT_NAV() -> tuple:  # noqa: N802
+    return (font_sans(), 10, "bold")
+
+
+def FONT_HEADING() -> tuple:  # noqa: N802
+    return (font_sans(), 10, "bold")
+
+
+def FONT_BODY() -> tuple:  # noqa: N802
+    return (font_sans(), 10)
+
+
+def FONT_SMALL() -> tuple:  # noqa: N802
+    return (font_sans(), 9)
+
+
+def FONT_BADGE() -> tuple:  # noqa: N802
+    return (font_mono(), 8, "bold")
+
+
+def FONT_MONO() -> tuple:  # noqa: N802
+    return (font_mono(), 9)
+
+
+def FONT_DATA() -> tuple:  # noqa: N802
+    return (font_mono(), 10)
 
 
 # ── Espacements ───────────────────────────────────────────────────────────────
 
-PAD_XS = 2
-PAD_S = 4
-PAD_M = 8
-PAD_L = 12
-PAD_XL = 16
+PAD_XS = 4
+PAD_S = 8
+PAD_M = 12
+PAD_L = 16
+PAD_XL = 24
+BORDER_W = 1
 
 
 # ── Thème ttkbootstrap ────────────────────────────────────────────────────────
@@ -100,10 +189,10 @@ THEME_NAME = "surveillance"
 # Projection de la palette sur le modèle de couleurs de ttkbootstrap.
 # Les seize emplacements sont obligatoires ; `Colors` les exige tous.
 TTK_COLORS: dict[str, str] = {
-    "primary": BRAND_PRIMARY,
+    "primary": BRAND_ACCENT,
     "secondary": TEXT_SECONDARY,
-    "success": STATE_OK,
-    "info": ACCENT_AI,
+    "success": BRAND_ACCENT,
+    "info": BRAND_PRIMARY,
     "warning": STATE_WARN,
     "danger": STATE_DANGER,
     "light": TEXT_PRIMARY,

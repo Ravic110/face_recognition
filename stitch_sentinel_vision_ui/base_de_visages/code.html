@@ -1,0 +1,157 @@
+<html lang="fr"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><style>@layer base{html,body{margin:0;padding:0;overflow-x:hidden;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface":"#051424","primary-container":"#0b1120","surface-dim":"#051424","secondary-fixed-dim":"#4ae176","surface-container-lowest":"#010f1f","surface-tint":"#c1c6db","background":"#051424","surface-container-highest":"#273647","surface-container-high":"#1c2b3c","tertiary-fixed-dim":"#ffb3ad","inverse-surface":"#d4e4fa","surface-container-low":"#0d1c2d","on-secondary":"#003915","on-tertiary-container":"#e63d3e","outline":"#909097","primary":"#c1c6db","on-primary":"#2a3040","on-background":"#d4e4fa","error-container":"#93000a","on-secondary-fixed":"#002109","inverse-primary":"#585e70","surface-container":"#122131","tertiary-fixed":"#ffdad7","surface-variant":"#273647","primary-fixed":"#dde2f8","on-tertiary-fixed-variant":"#930013","secondary-fixed":"#6bff8f","on-error-container":"#ffdad6","on-tertiary":"#68000a","on-tertiary-fixed":"#410004","primary-fixed-dim":"#c1c6db","on-primary-fixed":"#151b2b","outline-variant":"#45464c","on-surface":"#d4e4fa","on-primary-fixed-variant":"#414658","secondary-container":"#00b954","tertiary-container":"#2e0002","tertiary":"#ffb3ad","on-surface-variant":"#c6c6cd","on-error":"#690005","on-secondary-container":"#004119","surface-bright":"#2c3a4c","on-primary-container":"#777c90","inverse-on-surface":"#233143","on-secondary-fixed-variant":"#005321","secondary":"#4ae176","error":"#ffb4ab"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"container-padding":"16px","panel-gap":"8px","gutter":"1px","grid-unit":"4px"},"fontFamily":{"body-sm":["Inter"],"label-caps":["Inter"],"data-mono":["JetBrains Mono"],"headline-md":["Inter"],"display-lg":["Inter"]},"fontSize":{"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"label-caps":["11px",{"lineHeight":"16px","letterSpacing":"0.08em","fontWeight":"700"}],"data-mono":["14px",{"lineHeight":"20px","fontWeight":"500"}],"headline-md":["20px",{"lineHeight":"28px","fontWeight":"600"}],"display-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}]}}}}</script><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/></head><body class="bg-background font-body-sm text-on-background min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant"><div class="h-14 w-full px-container-padding flex items-center justify-between border-b border-outline-variant/30"><div class="flex items-center gap-4"><img alt="Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLtpwzwIBMZfrFIWCkRTyC94x1GH3qCJ6Xnb72jJCis0HbqJSfh41MR06VjXLwd5bFg4-gwB_bMx1Enkbi8ZrnwnulEbTAiSqlWFmGjlyqf6XEVogT1RWbfAVUk2w79VPC3rsTLkF9afS7Xu4enwaKuktzrQqpLE3UahtXzPe8zEbp-w7VjWX22l2d0vt5nsN1iplWjF8824RuMcuun_oMw3FKS5Js1y5Q43T9zAV2O2XSc6UwYB6Yk3mQM"/><span class="font-headline-md text-headline-md text-on-surface tracking-tight">SURVEILLANCE</span><div class="flex items-center gap-2 ml-4"><button class="h-8 px-3 border border-secondary text-secondary font-label-caps text-label-caps hover:bg-secondary hover:text-on-secondary transition-colors">START</button><button class="h-8 px-3 border border-outline-variant text-outline-variant font-label-caps text-label-caps cursor-not-allowed" disabled="">STOP</button></div></div><div class="flex items-center gap-4"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div><div class="h-12 w-full px-container-padding flex items-center justify-between bg-surface-container-low"><nav class="flex items-center gap-8 h-full" data-active-classes="text-secondary border-b-2 border-secondary"><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="tableau-de-bord" href="#">TABLEAU DE BORD</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="historique" href="#">HISTORIQUE</a><a aria-current="page" class="h-full flex items-center px-1 font-label-caps transition-all text-secondary border-b-2 border-secondary" data-path="base-de-visages" href="#">BASE DE VISAGES</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="alertes" href="#">ALERTES</a><a class="h-full flex items-center px-1 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all border-b-2 border-transparent" data-path="configuration" href="#">CONFIGURATION</a></nav><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><button class="font-label-caps text-label-caps text-on-surface-variant hover:text-secondary">API v2.4.0</button></div></div><div class="h-8 w-full px-container-padding flex items-center bg-surface-container-lowest border-t border-outline-variant/20"><span class="font-data-mono text-[10px] text-secondary tracking-widest uppercase">SYSTEM STATUS:</span><span class="font-data-mono text-[10px] text-on-surface-variant ml-2">Prêt. Démarrez la surveillance.</span></div></header><main class="pt-[136px] w-full min-h-screen bg-background"><div class="flex flex-col w-full h-full p-container-padding gap-panel-gap">
+<!-- Top Action Bar -->
+<div class="flex items-center justify-between w-full gap-4">
+<div class="relative flex-1 max-w-2xl">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full h-10 pl-10 pr-4 bg-surface-container-low border border-outline-variant rounded-full text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Rechercher par ID / Nom / Rôle" type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center p-1 bg-surface-container-low rounded-lg border border-outline-variant/50">
+<button class="w-8 h-8 flex items-center justify-center rounded bg-surface-container-highest text-on-surface shadow-sm">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">view_list</span>
+</button>
+</div>
+<button class="h-10 px-6 bg-secondary text-on-secondary font-label-caps text-label-caps rounded-full flex items-center gap-2 hover:bg-secondary/90 transition-all shadow-md shadow-secondary/20 hover:shadow-secondary/40 transform hover:-translate-y-0.5 active:translate-y-0">
+<span class="material-symbols-outlined text-[16px] font-bold">add</span>
+                ENREGISTRER UN VISAGE
+            </button>
+</div>
+</div>
+<!-- Stats / Overview Bar -->
+<div class="flex items-center gap-8 py-4 border-b border-outline-variant/30 px-2">
+<div class="flex flex-col">
+<span class="font-data-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Total Profiles</span>
+<span class="font-display-lg text-display-lg text-on-surface mt-1">1,248</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Actifs (24h)</span>
+<span class="font-display-lg text-display-lg text-secondary mt-1">892</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Alertes</span>
+<span class="font-display-lg text-display-lg text-error mt-1">03</span>
+</div>
+<div class="ml-auto flex items-center gap-4 text-on-surface-variant text-body-sm font-body-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> Autorisé
+            </div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Admin
+            </div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span> Interdit
+            </div>
+</div>
+</div>
+<!-- Face Database Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-panel-gap mt-4 overflow-y-auto pb-8">
+<!-- Person Card 1 -->
+<div class="group relative flex flex-col bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 hover:border-secondary/50 transition-all duration-300 hover:shadow-xl hover:shadow-secondary/5">
+<!-- Image Area -->
+<div class="relative w-full aspect-[4/3] bg-surface-container-highest overflow-hidden">
+<img alt="Jean Dupont Photo" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 transform group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AP1WRLvnj9zIMrMAxew1zKMOrtJZ2j9NtbaDezhVKZSJXlWTMG5OANtrWLe0eoXTLEQLcktWgWKyCLCKF5rHZEc2cWfy9WHd2lf4Hj9RIIenoTRH15hTfbufqd_V1762akLn2mMecw-4ymED5_GhjtT8BbduEYYfYDHcyt2cBVEeZta27soO4HUtO9JBaV275jaMTLx_P4BWdBfzXavCkUVVdkQ5YB1kHzFMQQ-QsmmpLal0y6CL7LJgERklnJhy"/>
+<!-- Status Badge -->
+<div class="absolute top-3 left-3 px-2 py-1 bg-secondary text-on-secondary font-label-caps text-[9px] tracking-widest rounded shadow-sm backdrop-blur-md flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-on-secondary animate-pulse"></span>
+                    AUTORISÉ
+                </div>
+<!-- Overlay Gradient for contrast -->
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-surface-container to-transparent"></div>
+<!-- Match Score -->
+<div class="absolute bottom-3 right-3 flex flex-col items-end">
+<span class="font-data-mono text-[10px] text-secondary">MATCH</span>
+<span class="font-data-mono text-body-sm text-on-surface">99.8%</span>
+</div>
+</div>
+<!-- Details Area -->
+<div class="flex flex-col p-4 relative z-10 bg-surface-container">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface tracking-tight">JEAN DUPONT</h3>
+<button class="text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+<div class="flex flex-col">
+<span class="font-data-mono text-[9px] text-on-surface-variant uppercase tracking-wider">ID unique</span>
+<span class="font-data-mono text-body-sm text-primary">F-8932-A</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-[9px] text-on-surface-variant uppercase tracking-wider">Rôle</span>
+<span class="font-label-caps text-[10px] text-on-surface mt-1">EMPLOYÉ</span>
+</div>
+<div class="flex flex-col col-span-2 mt-1">
+<span class="font-data-mono text-[9px] text-on-surface-variant uppercase tracking-wider">Dernier accès</span>
+<div class="flex items-center gap-2 mt-0.5 text-on-surface text-body-sm">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+                            Aujourd'hui, 08:42
+                        </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Person Card 2 -->
+<div class="group relative flex flex-col bg-surface-container rounded-xl overflow-hidden border border-outline-variant/20 hover:border-tertiary/50 transition-all duration-300 hover:shadow-xl hover:shadow-tertiary/5">
+<!-- Image Area -->
+<div class="relative w-full aspect-[4/3] bg-surface-container-highest overflow-hidden flex items-center justify-center">
+<!-- Abstract Avatar Pattern -->
+<svg class="absolute inset-0 w-full h-full opacity-10 text-on-surface" fill="currentColor" viewbox="0 0 100 100">
+<pattern height="10" id="dots" patternunits="userSpaceOnUse" width="10" x="0" y="0">
+<circle cx="2" cy="2" r="1"></circle>
+</pattern>
+<rect fill="url(#dots)" height="100%" width="100%" x="0" y="0"></rect>
+</svg>
+<div class="w-16 h-16 rounded-full bg-surface border-2 border-outline-variant/30 flex items-center justify-center text-on-surface-variant z-10 group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[32px]">person_off</span>
+</div>
+<!-- Status Badge -->
+<div class="absolute top-3 left-3 px-2 py-1 bg-tertiary text-on-tertiary font-label-caps text-[9px] tracking-widest rounded shadow-sm backdrop-blur-md flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[10px]">shield_person</span>
+                    ADMIN
+                </div>
+<div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-surface-container to-transparent z-0"></div>
+</div>
+<!-- Details Area -->
+<div class="flex flex-col p-4 relative z-10 bg-surface-container">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface tracking-tight">MARIE CURIE</h3>
+<button class="text-on-surface-variant hover:text-tertiary transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+<div class="flex flex-col">
+<span class="font-data-mono text-[9px] text-on-surface-variant uppercase tracking-wider">ID unique</span>
+<span class="font-data-mono text-body-sm text-primary">A-0001-X</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-[9px] text-on-surface-variant uppercase tracking-wider">Rôle</span>
+<span class="font-label-caps text-[10px] text-tertiary mt-1">ADMINISTRATEUR</span>
+</div>
+<div class="flex flex-col col-span-2 mt-1">
+<span class="font-data-mono text-[9px] text-on-surface-variant uppercase tracking-wider">Statut Biométrique</span>
+<div class="flex items-center gap-2 mt-0.5 text-on-surface-variant text-[11px] italic">
+<span class="material-symbols-outlined text-[14px] text-error">warning</span>
+                            Empreinte faciale manquante
+                        </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Add New Placeholder Card -->
+<div class="group relative flex flex-col bg-surface-container-low rounded-xl overflow-hidden border border-dashed border-outline-variant/40 hover:border-secondary transition-all duration-300 hover:bg-surface-container cursor-pointer min-h-[300px]">
+<div class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+<div class="w-16 h-16 rounded-full bg-surface flex items-center justify-center text-secondary mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-secondary/20">
+<span class="material-symbols-outlined text-[24px]">person_add</span>
+</div>
+<h4 class="font-headline-md text-body-sm text-on-surface mb-2">Nouveau Profil</h4>
+<p class="font-body-sm text-[11px] text-on-surface-variant max-w-[200px]">Enregistrez un nouveau visage dans la base de données via la caméra ou un fichier.</p>
+</div>
+</div>
+</div>
+</div></main></body></html>

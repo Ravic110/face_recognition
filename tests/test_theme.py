@@ -73,11 +73,22 @@ def test_le_mapping_couvre_tous_les_emplacements_attendus():
 
 
 def test_le_mapping_utilise_la_palette():
-    assert theme.TTK_COLORS["primary"] == theme.BRAND_PRIMARY
+    """Le vert est l'accent de marque, comme dans les maquettes."""
+    assert theme.TTK_COLORS["primary"] == theme.BRAND_ACCENT
+    assert theme.TTK_COLORS["success"] == theme.BRAND_ACCENT
     assert theme.TTK_COLORS["bg"] == theme.BG_BASE
     assert theme.TTK_COLORS["fg"] == theme.TEXT_PRIMARY
-    assert theme.TTK_COLORS["info"] == theme.ACCENT_AI
     assert theme.TTK_COLORS["danger"] == theme.STATE_DANGER
+
+
+def test_accent_de_marque_est_le_vert():
+    assert theme.BRAND_ACCENT == "#22C55E"
+
+
+def test_deux_niveaux_de_bordure_distincts():
+    """Une bordure de la couleur des cartes serait invisible sur une carte."""
+    assert theme.BORDER != theme.BORDER_SUBTLE
+    assert theme.BORDER_SUBTLE == theme.BG_CARD
 
 
 # ── Badge d'état de connexion ─────────────────────────────────────────────────
@@ -138,7 +149,32 @@ def test_personne_ciblee_en_violet():
 
 
 def test_polices_definies():
-    for police in (theme.FONT_TITLE, theme.FONT_HEADING, theme.FONT_BODY, theme.FONT_SMALL):
-        famille, taille = police[0], police[1]
+    for police in (
+        theme.FONT_TITLE,
+        theme.FONT_NAV,
+        theme.FONT_HEADING,
+        theme.FONT_BODY,
+        theme.FONT_SMALL,
+        theme.FONT_BADGE,
+        theme.FONT_MONO,
+        theme.FONT_DATA,
+    ):
+        famille, taille = police()[0], police()[1]
         assert isinstance(famille, str) and famille
         assert isinstance(taille, int) and taille > 0
+
+
+def test_familles_resolues_une_seule_fois():
+    assert theme.font_sans() is theme.font_sans()
+    assert theme.font_mono() is theme.font_mono()
+
+
+def test_resolution_prend_la_premiere_installee(monkeypatch):
+    monkeypatch.setattr(theme, "_sans", None)
+    monkeypatch.setattr(theme, "_premiere_disponible", lambda prefs, defaut: "Noto Sans")
+    assert theme.font_sans() == "Noto Sans"
+    monkeypatch.setattr(theme, "_sans", None)
+
+
+def test_defaut_si_aucune_police_disponible():
+    assert theme._premiere_disponible(("PoliceInexistante42",), "TkDefaultFont") == "TkDefaultFont"

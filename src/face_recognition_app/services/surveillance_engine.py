@@ -60,8 +60,12 @@ class SurveillanceEvent:
         return [f.name for f in self.faces if f.is_known]
 
     @property
+    def unknown_count(self) -> int:
+        return sum(1 for f in self.faces if not f.is_known)
+
+    @property
     def has_unknown(self) -> bool:
-        return any(not f.is_known for f in self.faces)
+        return self.unknown_count > 0
 
 
 EventCallback = Callable[[SurveillanceEvent], None]

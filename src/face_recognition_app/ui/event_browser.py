@@ -21,6 +21,7 @@ from PIL import Image, ImageTk
 
 from .. import theme
 from ..storage.event_store import EventStore, StoredEvent
+from .widgets import Frame, Label
 
 
 class EventBrowserApp(tk.Toplevel):
@@ -46,18 +47,18 @@ class EventBrowserApp(tk.Toplevel):
 
     def _build_ui(self) -> None:
         # Barre de filtres
-        filter_bar = tk.Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
+        filter_bar = Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
         filter_bar.pack(fill=tk.X)
 
-        tk.Label(
+        Label(
             filter_bar,
             text="Historique",
             bg=theme.BG_SURFACE,
             fg=theme.TEXT_PRIMARY,
-            font=theme.FONT_TITLE,
+            font=theme.FONT_TITLE(),
         ).pack(side=tk.LEFT, padx=6)
 
-        tk.Label(filter_bar, text="Caméra :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
+        Label(filter_bar, text="Caméra :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
             side=tk.LEFT, padx=(12, 2)
         )
         self._cam_var = tk.StringVar(value="Toutes")
@@ -67,7 +68,7 @@ class EventBrowserApp(tk.Toplevel):
         self._cam_cb.pack(side=tk.LEFT)
         self._cam_cb.bind("<<ComboboxSelected>>", lambda _: self._load_events())
 
-        tk.Label(filter_bar, text="Personne :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
+        Label(filter_bar, text="Personne :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
             side=tk.LEFT, padx=(10, 2)
         )
         self._person_var = tk.StringVar()
@@ -82,12 +83,12 @@ class EventBrowserApp(tk.Toplevel):
         )
 
         self._count_var = tk.StringVar(value="")
-        tk.Label(
+        Label(
             filter_bar,
             textvariable=self._count_var,
             bg=theme.BG_SURFACE,
             fg=theme.TEXT_SECONDARY,
-            font=theme.FONT_SMALL,
+            font=theme.FONT_SMALL(),
         ).pack(side=tk.RIGHT, padx=10)
 
         # Corps : liste à gauche, détail à droite
@@ -95,7 +96,7 @@ class EventBrowserApp(tk.Toplevel):
         body.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
         # ── Liste des événements
-        left = tk.Frame(body)
+        left = Frame(body)
         body.add(left, minsize=480)
 
         cols = ("datetime", "camera", "faces")
@@ -119,13 +120,13 @@ class EventBrowserApp(tk.Toplevel):
         self._tree.tag_configure("odd", background=theme.BG_SURFACE)
 
         # ── Détail d'un événement
-        right = tk.Frame(body, padx=10, pady=8)
+        right = Frame(body, padx=10, pady=8)
         body.add(right, minsize=280)
 
-        tk.Label(right, text="Détail", font=("Helvetica", 11, "bold")).pack(anchor=tk.W)
+        Label(right, text="Détail", font=("Helvetica", 11, "bold")).pack(anchor=tk.W)
 
         # Snapshot
-        self._snap_label = tk.Label(
+        self._snap_label = Label(
             right,
             bg=theme.BG_BASE,
             width=30,
@@ -139,11 +140,11 @@ class EventBrowserApp(tk.Toplevel):
         info_lf = ttk.LabelFrame(right, text="Informations")
         info_lf.pack(fill=tk.X)
         self._detail_var = tk.StringVar(value="Sélectionnez un événement.")
-        tk.Label(
+        Label(
             info_lf,
             textvariable=self._detail_var,
             justify=tk.LEFT,
-            font=theme.FONT_SMALL,
+            font=theme.FONT_SMALL(),
             wraplength=240,
         ).pack(anchor=tk.W, padx=6, pady=6)
 
@@ -259,15 +260,15 @@ class EventBrowserApp(tk.Toplevel):
         dlg.resizable(False, False)
         dlg.grab_set()
 
-        tk.Label(dlg, text="Supprimer les événements antérieurs à :", font=theme.FONT_BODY).pack(
+        Label(dlg, text="Supprimer les événements antérieurs à :", font=theme.FONT_BODY()).pack(
             padx=16, pady=(12, 4)
         )
 
         days_var = tk.IntVar(value=30)
-        frame = tk.Frame(dlg)
+        frame = Frame(dlg)
         frame.pack()
         ttk.Spinbox(frame, from_=1, to=365, textvariable=days_var, width=6).pack(side=tk.LEFT)
-        tk.Label(frame, text=" jours").pack(side=tk.LEFT)
+        Label(frame, text=" jours").pack(side=tk.LEFT)
 
         def _do_purge():
             days = days_var.get()
@@ -277,7 +278,7 @@ class EventBrowserApp(tk.Toplevel):
             messagebox.showinfo("Nettoyage", f"{deleted} événement(s) supprimé(s).", parent=self)
             self._load_events()
 
-        btn_frame = tk.Frame(dlg)
+        btn_frame = Frame(dlg)
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text="Annuler", command=dlg.destroy).pack(side=tk.RIGHT, padx=4)
         ttk.Button(btn_frame, text="Supprimer", command=_do_purge).pack(side=tk.RIGHT)
