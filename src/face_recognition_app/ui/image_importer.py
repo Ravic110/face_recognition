@@ -23,6 +23,7 @@ import face_recognition
 import numpy as np
 from PIL import Image, ImageTk
 
+from .. import theme
 from ..core.utils import is_duplicate, save_face_encoding
 from ..storage.encodings_store import load_existing_encodings
 
@@ -71,11 +72,15 @@ class ImageImporterApp(tk.Toplevel):
 
     def _build_ui(self) -> None:
         # ── Barre de contrôle supérieure
-        top = tk.Frame(self, bg="#2b2b2b", padx=8, pady=6)
+        top = tk.Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
         top.pack(fill=tk.X)
 
         tk.Label(
-            top, text="Import d'images", bg="#2b2b2b", fg="white", font=("Helvetica", 13, "bold")
+            top,
+            text="Import d'images",
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_PRIMARY,
+            font=theme.FONT_TITLE,
         ).pack(side=tk.LEFT, padx=6)
 
         ttk.Button(top, text="Sélectionner des images", command=self._browse_images).pack(
@@ -86,7 +91,11 @@ class ImageImporterApp(tk.Toplevel):
 
         self._counter_var = tk.StringVar(value="–")
         tk.Label(
-            top, textvariable=self._counter_var, bg="#2b2b2b", fg="#aaaaaa", font=("Helvetica", 10)
+            top,
+            textvariable=self._counter_var,
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_BODY,
         ).pack(side=tk.LEFT, padx=8)
 
         # ── Corps principal
@@ -94,11 +103,15 @@ class ImageImporterApp(tk.Toplevel):
         body.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
         # Panneau gauche : aperçu image
-        left = tk.Frame(body, bg="#1a1a1a")
+        left = tk.Frame(body, bg=theme.BG_SURFACE)
         body.add(left, minsize=400)
 
         self._canvas = tk.Canvas(
-            left, bg="#1a1a1a", cursor="crosshair", width=self.PREVIEW_W, height=self.PREVIEW_H
+            left,
+            bg=theme.BG_SURFACE,
+            cursor="crosshair",
+            width=self.PREVIEW_W,
+            height=self.PREVIEW_H,
         )
         self._canvas.pack(fill=tk.BOTH, expand=True)
         self._canvas.bind("<Button-1>", self._on_canvas_click)
@@ -108,9 +121,9 @@ class ImageImporterApp(tk.Toplevel):
         tk.Label(
             left,
             textvariable=self._img_status,
-            bg="#111",
-            fg="#ccc",
-            font=("Helvetica", 9),
+            bg=theme.BG_BASE,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
             anchor=tk.W,
         ).pack(fill=tk.X, padx=4, pady=2)
 
@@ -135,11 +148,11 @@ class ImageImporterApp(tk.Toplevel):
         info_lf.pack(fill=tk.X, pady=4)
         self._info_var = tk.StringVar(value="–")
         tk.Label(
-            info_lf, textvariable=self._info_var, justify=tk.LEFT, font=("Helvetica", 9), fg="gray"
+            info_lf, textvariable=self._info_var, justify=tk.LEFT, font=theme.FONT_SMALL, fg="gray"
         ).pack(anchor=tk.W, padx=6, pady=4)
 
         # Aperçu du visage sélectionné
-        self._face_preview_label = tk.Label(right, bg="#111", width=10, height=5)
+        self._face_preview_label = tk.Label(right, bg=theme.BG_BASE, width=10, height=5)
         self._face_preview_label.pack(pady=4)
 
         # Saisie du nom
@@ -160,7 +173,7 @@ class ImageImporterApp(tk.Toplevel):
         log_frame = tk.Frame(right, relief=tk.GROOVE, bd=1)
         log_frame.pack(fill=tk.BOTH, expand=True)
         self._log_text = tk.Text(
-            log_frame, height=6, state=tk.DISABLED, font=("Courier", 8), bg="#f5f5f5"
+            log_frame, height=6, state=tk.DISABLED, font=theme.FONT_MONO, bg=theme.BG_SURFACE
         )
         log_scroll = ttk.Scrollbar(log_frame, command=self._log_text.yview)
         self._log_text.configure(yscrollcommand=log_scroll.set)
@@ -208,7 +221,7 @@ class ImageImporterApp(tk.Toplevel):
         self._img_status.set(f"Analyse en cours : {path.name}…")
         self._face_listbox.delete(0, tk.END)
         self._info_var.set("–")
-        self._face_preview_label.configure(image="", bg="#111")
+        self._face_preview_label.configure(image="", bg=theme.BG_BASE)
         self._photo_ref = None
 
         if self._progress is not None:
@@ -380,7 +393,7 @@ class ImageImporterApp(tk.Toplevel):
         rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
         pil = Image.fromarray(rgb)
         photo = ImageTk.PhotoImage(pil)
-        self._face_preview_label.configure(image=photo, bg="#111")
+        self._face_preview_label.configure(image=photo, bg=theme.BG_BASE)
         self._face_preview_label.image = photo  # garder la référence
 
     # ── Enregistrement ────────────────────────────────────────────────────────

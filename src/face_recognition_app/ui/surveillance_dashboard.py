@@ -22,6 +22,7 @@ from tkinter import messagebox, ttk
 import cv2
 from PIL import Image, ImageTk
 
+from .. import theme
 from ..api.server import ApiServer
 from ..services.alert_manager import AlertManager
 from ..services.camera_manager import CameraManager
@@ -54,39 +55,61 @@ class CameraTile(tk.Frame):
     """
     Vignette affichant le flux d'une caméra dans la grille.
 
-    Affiche :
-      - La dernière frame annotée ou le flux brut
-      - Le nom de la caméra
-      - Un indicateur de connexion (vert = OK, rouge = KO)
+    Structure :
+      - en-tête : badge d'état (« EN LIGNE », « RECONNEXION 8 s »…) et FPS
+      - corps   : dernière frame annotée, ou le flux brut
+      - pied    : nom de la caméra et résumé des détections
+
+    Le badge exploite la machine à états de `CameraSource` : il affiche le délai
+    avant la prochaine tentative, au lieu du simple point rouge d'avant.
     """
 
     def __init__(self, parent: tk.Widget, uid: str, name: str, on_fullscreen=None) -> None:
-        super().__init__(parent, bg="#0d0d0d", relief=tk.RAISED, bd=1)
+        super().__init__(parent, bg=theme.BG_CARD, highlightthickness=1)
+        self.configure(highlightbackground=theme.BORDER, highlightcolor=theme.BORDER)
         self.uid = uid
         self._on_fullscreen = on_fullscreen
         self._latest_frame = None
 
-        # Image
-        self._canvas = tk.Canvas(
-            self, width=THUMB_W, height=THUMB_H, bg="#0d0d0d", highlightthickness=0
+        # ── En-tête : badge d'état et cadence
+        entete = tk.Frame(self, bg=theme.BG_CARD)
+        entete.pack(fill=tk.X, padx=theme.PAD_M, pady=(theme.PAD_S, theme.PAD_XS))
+
+        self._badge_dot = tk.Label(
+            entete, text="●", bg=theme.BG_CARD, fg=theme.STATE_DANGER, font=theme.FONT_SMALL
         )
-        self._canvas.pack(fill=tk.BOTH, expand=True)
+        self._badge_dot.pack(side=tk.LEFT)
+        self._badge_label = tk.Label(
+            entete,
+            text="HORS LIGNE",
+            bg=theme.BG_CARD,
+            fg=theme.STATE_DANGER,
+            font=theme.FONT_BADGE,
+        )
+        self._badge_label.pack(side=tk.LEFT, padx=theme.PAD_S)
+
+        self._fps_label = tk.Label(
+            entete, text="", bg=theme.BG_CARD, fg=theme.ACCENT_AI, font=theme.FONT_BADGE
+        )
+        self._fps_label.pack(side=tk.RIGHT)
+
+        # ── Corps : le flux
+        self._canvas = tk.Canvas(
+            self, width=THUMB_W, height=THUMB_H, bg=theme.BG_BASE, highlightthickness=0
+        )
+        self._canvas.pack(fill=tk.BOTH, expand=True, padx=theme.PAD_XS)
         self._canvas.bind("<Double-Button-1>", self._handle_dblclick)
 
-        # Pied : nom + statut + FPS
-        foot = tk.Frame(self, bg="#1a1a1a")
-        foot.pack(fill=tk.X)
-        self._status_dot = tk.Label(
-            foot, text="●", fg="#e74c3c", bg="#1a1a1a", font=("Helvetica", 10)
+        # ── Pied : nom et détections
+        pied = tk.Frame(self, bg=theme.BG_CARD)
+        pied.pack(fill=tk.X, padx=theme.PAD_M, pady=(theme.PAD_XS, theme.PAD_S))
+        tk.Label(
+            pied, text=name, bg=theme.BG_CARD, fg=theme.TEXT_PRIMARY, font=theme.FONT_SMALL
+        ).pack(side=tk.LEFT)
+        self._det_label = tk.Label(
+            pied, text="", bg=theme.BG_CARD, fg=theme.TEXT_SECONDARY, font=theme.FONT_BADGE
         )
-        self._status_dot.pack(side=tk.LEFT, padx=4)
-        tk.Label(foot, text=name, bg="#1a1a1a", fg="#eeeeee", font=("Helvetica", 9, "bold")).pack(
-            side=tk.LEFT
-        )
-        self._fps_label = tk.Label(foot, text="", bg="#1a1a1a", fg="#3498db", font=("Helvetica", 8))
-        self._fps_label.pack(side=tk.RIGHT, padx=2)
-        self._det_label = tk.Label(foot, text="", bg="#1a1a1a", fg="#f39c12", font=("Helvetica", 8))
-        self._det_label.pack(side=tk.RIGHT, padx=4)
+        self._det_label.pack(side=tk.RIGHT)
 
         self._photo_ref: ImageTk.PhotoImage | None = None
         self._last_annotated: object | None = None
@@ -97,29 +120,30 @@ class CameraTile(tk.Frame):
         if self._on_fullscreen:
             self._on_fullscreen(self.uid)
 
-    def update_frame(
-        self, frame_bgr, connected: bool = True, detections: str = "", fps: str = ""
-    ) -> None:
+    # ── Mise à jour ───────────────────────────────────────────────────────────
+
+    def set_status(self, state, retry_in: float = 0.0) -> None:
+        """Met à jour le badge depuis l'état de la source vidéo."""
+        libelle, couleur = theme.connection_badge(state, retry_in)
+        self._badge_dot.configure(fg=couleur)
+        self._badge_label.configure(text=libelle, fg=couleur)
+
+    def update_frame(self, frame_bgr, detections: str = "", fps: str = "") -> None:
         """Appelé périodiquement depuis le thread Tkinter."""
-        self._status_dot.configure(fg="#2ecc71" if connected else "#e74c3c")
         self._det_label.configure(text=detections)
         self._fps_label.configure(text=fps)
-        if frame_bgr is not None:
-            self._latest_frame = frame_bgr
 
         if frame_bgr is None:
             return
+        self._latest_frame = frame_bgr
 
-        # Redimensionner
         h, w = frame_bgr.shape[:2]
         scale = min(THUMB_W / w, THUMB_H / h)
         nw, nh = int(w * scale), int(h * scale)
         resized = cv2.resize(frame_bgr, (nw, nh))
         rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-        pil = Image.fromarray(rgb)
-        photo = ImageTk.PhotoImage(pil)
+        photo = ImageTk.PhotoImage(Image.fromarray(rgb))
         self._photo_ref = photo
-        self._canvas.configure(width=THUMB_W, height=THUMB_H)
         self._canvas.delete("all")
         ox = (THUMB_W - nw) // 2
         oy = (THUMB_H - nh) // 2
@@ -136,9 +160,13 @@ class CameraTile(tk.Frame):
         return f
 
     def _draw_placeholder(self) -> None:
-        self._canvas.create_rectangle(0, 0, THUMB_W, THUMB_H, fill="#0d0d0d", outline="")
+        self._canvas.create_rectangle(0, 0, THUMB_W, THUMB_H, fill=theme.BG_BASE, outline="")
         self._canvas.create_text(
-            THUMB_W // 2, THUMB_H // 2, text="Pas de signal", fill="#444444", font=("Helvetica", 11)
+            THUMB_W // 2,
+            THUMB_H // 2,
+            text="Pas de signal",
+            fill=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
         )
 
 
@@ -158,7 +186,7 @@ class SurveillanceDashboard(tk.Toplevel):
         self.title("Surveillance Intelligente")
         self.geometry("1280x740")
         self.minsize(900, 600)
-        self.configure(bg="#111111")
+        self.configure(bg=theme.BG_BASE)
 
         # Services
         self._cam_mgr = CameraManager(CAMERAS_FILE)
@@ -200,185 +228,135 @@ class SurveillanceDashboard(tk.Toplevel):
 
     def _build_ui(self) -> None:
         # ── Barre supérieure ───────────────────────────────────────────────────
-        topbar = tk.Frame(self, bg="#1a1a1a", padx=8, pady=6)
+        # La couleur ne sert plus qu'à signaler : une seule action est colorée
+        # (démarrer / arrêter), tout le reste est neutre. L'ancienne barre
+        # alignait neuf boutons de neuf couleurs, où rien ne ressortait.
+        topbar = tk.Frame(self, bg=theme.BG_SURFACE, padx=theme.PAD_L, pady=theme.PAD_M)
         topbar.pack(fill=tk.X)
 
+        # ── Ligne 1 : identité, action principale, profil ──────────────────────
+        ligne_haut = tk.Frame(topbar, bg=theme.BG_SURFACE)
+        ligne_haut.pack(fill=tk.X)
+
         tk.Label(
-            topbar,
-            text="Surveillance Intelligente",
-            bg="#1a1a1a",
-            fg="white",
-            font=("Helvetica", 15, "bold"),
-        ).pack(side=tk.LEFT, padx=6)
+            ligne_haut,
+            text="◉",
+            bg=theme.BG_SURFACE,
+            fg=theme.BRAND_PRIMARY,
+            font=(theme.FONT_TITLE[0], theme.FONT_TITLE[1]),
+        ).pack(side=tk.LEFT)
+        tk.Label(
+            ligne_haut,
+            text="Surveillance",
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_PRIMARY,
+            font=theme.FONT_TITLE,
+        ).pack(side=tk.LEFT, padx=(theme.PAD_M, theme.PAD_XL))
 
-        # Boutons surveillance
-        btn_cfg = {
-            "relief": tk.FLAT,
-            "bg": "#2ecc71",
-            "fg": "white",
-            "font": ("Helvetica", 9, "bold"),
-            "padx": 10,
-            "pady": 4,
-            "bd": 0,
-        }
-        self._start_btn = tk.Button(
-            topbar, text="▶  Démarrer", command=self._start_surveillance, **btn_cfg
+        self._start_btn = ttk.Button(
+            ligne_haut,
+            text="▶  Démarrer",
+            command=self._start_surveillance,
+            bootstyle="success",
+            width=14,
         )
-        self._start_btn.pack(side=tk.LEFT, padx=6)
+        self._start_btn.pack(side=tk.LEFT)
 
-        btn_stop_cfg = {**btn_cfg, "bg": "#e74c3c"}
-        self._stop_btn = tk.Button(
-            topbar,
+        self._stop_btn = ttk.Button(
+            ligne_haut,
             text="■  Arrêter",
             command=self._stop_surveillance,
             state=tk.DISABLED,
-            **btn_stop_cfg,
+            bootstyle="danger",
+            width=14,
         )
-        self._stop_btn.pack(side=tk.LEFT, padx=2)
+        self._stop_btn.pack(side=tk.LEFT, padx=theme.PAD_M)
 
-        ttk.Separator(topbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=2)
-
-        # Caméras
-        tk.Button(
-            topbar,
-            text="+ Caméra",
-            command=self._add_camera,
-            relief=tk.FLAT,
-            bg="#3498db",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
-        ).pack(side=tk.LEFT, padx=4)
-
-        ttk.Separator(topbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=2)
-
-        # Modules d'import
-        tk.Button(
-            topbar,
-            text="Import images",
-            command=self._open_image_importer,
-            relief=tk.FLAT,
-            bg="#8e44ad",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
-        ).pack(side=tk.LEFT, padx=4)
-        tk.Button(
-            topbar,
-            text="Import vidéos",
-            command=self._open_video_importer,
-            relief=tk.FLAT,
-            bg="#8e44ad",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
-        ).pack(side=tk.LEFT, padx=4)
-
-        ttk.Separator(topbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=2)
-
-        # Historique + encodages
-        tk.Button(
-            topbar,
-            text="Historique",
-            command=self._open_event_browser,
-            relief=tk.FLAT,
-            bg="#16a085",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
-        ).pack(side=tk.LEFT, padx=4)
-        tk.Button(
-            topbar,
-            text="Encodages",
-            command=self._open_encodings_manager,
-            relief=tk.FLAT,
-            bg="#16a085",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
-        ).pack(side=tk.LEFT, padx=4)
-
-        ttk.Separator(topbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=2)
-
-        # Profil de surveillance (menu déroulant)
-        tk.Label(topbar, text="Profil :", bg="#1a1a1a", fg="#aaa", font=("Helvetica", 9)).pack(
-            side=tk.LEFT
-        )
+        # Profil, aligné à droite
         self._profile_var = tk.StringVar(value=self._profile_store.active_name)
-        profile_names = [p.name for p in self._profile_store.list_profiles()]
         self._profile_cb = ttk.Combobox(
-            topbar, textvariable=self._profile_var, values=profile_names, width=10, state="readonly"
+            ligne_haut,
+            textvariable=self._profile_var,
+            values=[p.name for p in self._profile_store.list_profiles()],
+            width=10,
+            state="readonly",
         )
-        self._profile_cb.pack(side=tk.LEFT, padx=4)
+        self._profile_cb.pack(side=tk.RIGHT)
         self._profile_cb.bind("<<ComboboxSelected>>", self._on_profile_change)
+        tk.Label(
+            ligne_haut,
+            text="Profil",
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
+        ).pack(side=tk.RIGHT, padx=theme.PAD_M)
 
-        ttk.Separator(topbar, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=2)
+        # ── Ligne 2 : navigation neutre et indicateurs ─────────────────────────
+        ligne_bas = tk.Frame(topbar, bg=theme.BG_SURFACE)
+        ligne_bas.pack(fill=tk.X, pady=(theme.PAD_M, 0))
 
-        # API REST
-        self._api_var = tk.StringVar(value="API: OFF")
-        self._api_btn = tk.Button(
-            topbar,
+        for libelle, commande in (
+            ("＋ Caméra", self._add_camera),
+            ("Images", self._open_image_importer),
+            ("Vidéos", self._open_video_importer),
+            ("Historique", self._open_event_browser),
+            ("Visages", self._open_encodings_manager),
+            ("Alertes", self._open_alerts_config),
+        ):
+            ttk.Button(
+                ligne_bas, text=libelle, command=commande, bootstyle="secondary-outline"
+            ).pack(side=tk.LEFT, padx=(0, theme.PAD_S))
+
+        # API — un point coloré porte l'état, le bouton reste neutre
+        self._api_var = tk.StringVar(value="API")
+        self._api_dot = tk.Label(
+            ligne_bas,
+            text="●",
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
+        )
+        self._api_dot.pack(side=tk.RIGHT, padx=(theme.PAD_XS, 0))
+        self._api_btn = ttk.Button(
+            ligne_bas,
             textvariable=self._api_var,
             command=self._toggle_api,
-            relief=tk.FLAT,
-            bg="#555",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
+            bootstyle="secondary-outline",
         )
-        self._api_btn.pack(side=tk.LEFT, padx=4)
+        self._api_btn.pack(side=tk.RIGHT)
 
-        # Alertes
-        tk.Button(
-            topbar,
-            text="Alertes",
-            command=self._open_alerts_config,
-            relief=tk.FLAT,
-            bg="#d35400",
-            fg="white",
-            font=("Helvetica", 9),
-            padx=8,
-            pady=4,
-            bd=0,
-        ).pack(side=tk.LEFT, padx=4)
-
-        # Statut global
+        # ── Bandeau de statut ──────────────────────────────────────────────────
         self._status_var = tk.StringVar(
-            value="Prêt. Démarrez la surveillance ou ajoutez des caméras."
+            value="Prêt. Démarrez la surveillance ou ajoutez une caméra."
         )
+        bandeau = tk.Frame(self, bg=theme.BG_CARD)
+        bandeau.pack(fill=tk.X)
         tk.Label(
-            topbar, textvariable=self._status_var, bg="#1a1a1a", fg="#aaaaaa", font=("Helvetica", 9)
-        ).pack(side=tk.RIGHT, padx=8)
+            bandeau,
+            textvariable=self._status_var,
+            bg=theme.BG_CARD,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
+            anchor=tk.W,
+        ).pack(fill=tk.X, padx=theme.PAD_L, pady=theme.PAD_S)
 
         # ── Corps ─────────────────────────────────────────────────────────────
         body = tk.PanedWindow(
-            self, orient=tk.HORIZONTAL, bg="#111111", sashwidth=6, sashrelief=tk.FLAT
+            self, orient=tk.HORIZONTAL, bg=theme.BG_BASE, sashwidth=6, sashrelief=tk.FLAT
         )
-        body.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        body.pack(fill=tk.BOTH, expand=True, padx=theme.PAD_S, pady=theme.PAD_S)
 
         # ── Panneau gauche : grille caméras + liste ─────────────────────────
-        left_pane = tk.Frame(body, bg="#111111")
+        left_pane = tk.Frame(body, bg=theme.BG_BASE)
         body.add(left_pane, minsize=600)
 
-        # Grille des vignettes
-        self._grid_frame = tk.Frame(left_pane, bg="#111111")
-        self._grid_frame.pack(fill=tk.BOTH, expand=True)
+        self._grid_frame = tk.Frame(left_pane, bg=theme.BG_BASE)
 
         # ── Liste des caméras configurées
         cam_list_lf = ttk.LabelFrame(left_pane, text="Caméras configurées")
-        cam_list_lf.pack(fill=tk.X, padx=4, pady=(4, 2))
+        cam_list_lf.pack(
+            side=tk.BOTTOM, fill=tk.X, padx=theme.PAD_S, pady=(theme.PAD_S, theme.PAD_XS)
+        )
 
         self._cam_list = ttk.Treeview(
             cam_list_lf, columns=("type", "source", "etat"), show="headings", height=4
@@ -388,28 +366,44 @@ class SurveillanceDashboard(tk.Toplevel):
         self._cam_list.heading("etat", text="État")
         self._cam_list.column("type", width=80, anchor=tk.CENTER)
         self._cam_list.column("source", width=220)
-        self._cam_list.column("etat", width=80, anchor=tk.CENTER)
+        self._cam_list.column("etat", width=110, anchor=tk.CENTER)
         self._cam_list.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        cam_btns = tk.Frame(cam_list_lf)
-        cam_btns.pack(side=tk.RIGHT, fill=tk.Y, padx=4)
+        self._cam_list.tag_configure("actif", foreground=theme.STATE_OK)
+        self._cam_list.tag_configure("attente", foreground=theme.STATE_WARN)
+        self._cam_list.tag_configure("inactif", foreground=theme.TEXT_SECONDARY)
+
+        cam_btns = tk.Frame(cam_list_lf, bg=theme.BG_BASE)
+        cam_btns.pack(side=tk.RIGHT, fill=tk.Y, padx=theme.PAD_S)
         ttk.Button(cam_btns, text="Modifier", command=self._edit_camera).pack(pady=2, fill=tk.X)
         ttk.Button(cam_btns, text="Supprimer", command=self._remove_camera).pack(pady=2, fill=tk.X)
         ttk.Button(cam_btns, text="Tester", command=self._test_camera).pack(pady=2, fill=tk.X)
 
+        self._grid_frame.pack(fill=tk.BOTH, expand=True)
+
         # ── Panneau droit : journal des événements
-        right_pane = tk.Frame(body, bg="#111111")
-        body.add(right_pane, minsize=280)
+        right_pane = tk.Frame(body, bg=theme.BG_BASE)
+        body.add(right_pane, minsize=300)
 
+        entete_journal = tk.Frame(right_pane, bg=theme.BG_BASE)
+        entete_journal.pack(fill=tk.X, padx=theme.PAD_M, pady=(theme.PAD_M, theme.PAD_S))
         tk.Label(
-            right_pane,
-            text="Journal de détections",
-            bg="#111111",
-            fg="white",
-            font=("Helvetica", 11, "bold"),
-        ).pack(anchor=tk.W, padx=6, pady=(6, 2))
+            entete_journal,
+            text="Détections",
+            bg=theme.BG_BASE,
+            fg=theme.TEXT_PRIMARY,
+            font=theme.FONT_HEADING,
+        ).pack(side=tk.LEFT)
+        self._event_count_var = tk.StringVar(value="")
+        tk.Label(
+            entete_journal,
+            textvariable=self._event_count_var,
+            bg=theme.BG_BASE,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
+        ).pack(side=tk.RIGHT)
 
-        self._event_canvas = tk.Canvas(right_pane, bg="#111111", highlightthickness=0)
+        self._event_canvas = tk.Canvas(right_pane, bg=theme.BG_BASE, highlightthickness=0)
         event_scroll = ttk.Scrollbar(
             right_pane, orient=tk.VERTICAL, command=self._event_canvas.yview
         )
@@ -417,7 +411,7 @@ class SurveillanceDashboard(tk.Toplevel):
         event_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self._event_canvas.pack(fill=tk.BOTH, expand=True)
 
-        self._event_inner = tk.Frame(self._event_canvas, bg="#111111")
+        self._event_inner = tk.Frame(self._event_canvas, bg=theme.BG_BASE)
         self._event_canvas.create_window((0, 0), window=self._event_inner, anchor=tk.NW)
         self._event_inner.bind(
             "<Configure>",
@@ -441,8 +435,8 @@ class SurveillanceDashboard(tk.Toplevel):
             tk.Label(
                 self._grid_frame,
                 text="Aucune caméra configurée.\nCliquez sur « + Caméra » pour en ajouter une.",
-                bg="#111111",
-                fg="#555555",
+                bg=theme.BG_BASE,
+                fg=theme.TEXT_SECONDARY,
                 font=("Helvetica", 13),
                 justify=tk.CENTER,
             ).pack(expand=True)
@@ -601,45 +595,68 @@ class SurveillanceDashboard(tk.Toplevel):
             else ""
         )
 
-        entry = tk.Frame(self._event_inner, bg="#1e1e1e", relief=tk.GROOVE, bd=1)
-        entry.pack(fill=tk.X, padx=4, pady=2)
+        # Une carte par détection, avec un liseré coloré à gauche : rouge s'il y
+        # a un inconnu, vert si tous les visages sont reconnus. La couleur porte
+        # l'information la plus importante, lisible sans lire le texte.
+        accent = theme.STATE_DANGER if event.has_unknown else theme.STATE_OK
+
+        entry = tk.Frame(self._event_inner, bg=accent)
+        entry.pack(fill=tk.X, padx=theme.PAD_M, pady=theme.PAD_XS)
+
+        carte = tk.Frame(entry, bg=theme.BG_CARD)
+        carte.pack(fill=tk.X, padx=(3, 0))
 
         # Miniature snapshot
         if event.frame is not None:
             try:
-                import cv2 as _cv2
-
-                thumb = _cv2.resize(event.frame, (72, 54))
-                rgb = _cv2.cvtColor(thumb, _cv2.COLOR_BGR2RGB)
-                pil = Image.fromarray(rgb)
-                photo = ImageTk.PhotoImage(pil)
+                thumb = cv2.resize(event.frame, (72, 54))
+                rgb = cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB)
+                photo = ImageTk.PhotoImage(Image.fromarray(rgb))
                 self._event_photo_refs.append(photo)
                 if len(self._event_photo_refs) > 60:
                     self._event_photo_refs.pop(0)
-                lbl = tk.Label(entry, image=photo, bg="#1e1e1e")
-                lbl.pack(side=tk.LEFT, padx=4, pady=4)
-            except Exception:
-                pass
+                tk.Label(carte, image=photo, bg=theme.BG_CARD).pack(
+                    side=tk.LEFT, padx=theme.PAD_S, pady=theme.PAD_S
+                )
+            except Exception as exc:
+                logger.warning("Miniature du journal non générée : %s", exc)
 
-        info = tk.Frame(entry, bg="#1e1e1e")
-        info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4)
+        info = tk.Frame(carte, bg=theme.BG_CARD)
+        info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=theme.PAD_M, pady=theme.PAD_S)
+
+        ligne_haut = tk.Frame(info, bg=theme.BG_CARD)
+        ligne_haut.pack(fill=tk.X)
         tk.Label(
-            info,
-            text=f"[{ts}] {event.camera_name}",
-            bg="#1e1e1e",
-            fg="#3498db",
-            font=("Helvetica", 9, "bold"),
+            ligne_haut,
+            text=event.camera_name,
+            bg=theme.BG_CARD,
+            fg=theme.TEXT_PRIMARY,
+            font=theme.FONT_HEADING,
             anchor=tk.W,
-        ).pack(anchor=tk.W)
+        ).pack(side=tk.LEFT)
+        tk.Label(
+            ligne_haut,
+            text=ts,
+            bg=theme.BG_CARD,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_BADGE,
+        ).pack(side=tk.RIGHT)
+
         text = (names + unknown) or "Visage(s) inconnu(s)"
         tk.Label(
-            info, text=text, bg="#1e1e1e", fg="#ecf0f1", font=("Helvetica", 9), anchor=tk.W
+            info,
+            text=text,
+            bg=theme.BG_CARD,
+            fg=accent,
+            font=theme.FONT_SMALL,
+            anchor=tk.W,
         ).pack(anchor=tk.W)
 
         # Scroller vers le bas
         self._event_canvas.update_idletasks()
         self._event_canvas.yview_moveto(1.0)
 
+        self._event_count_var.set(f"{self._event_count}")
         self._status_var.set(f"Dernière détection : {ts} — {event.camera_name} — {text}")
 
     # ── Rafraîchissement périodique de la grille ──────────────────────────────
@@ -655,20 +672,22 @@ class SurveillanceDashboard(tk.Toplevel):
             self._annotated.clear()
 
         for uid, tile in self._tiles.items():
-            connected = self._cam_mgr.is_running(uid)
-            annotated = annotated_copy.get(uid)
+            # État réel de la source : le badge affiche le délai de reconnexion
+            # plutôt qu'un simple point rouge.
+            source = self._cam_mgr.get_source(uid)
+            if source is None:
+                tile.set_status(None)
+            else:
+                tile.set_status(source.state, source.next_retry_in)
 
-            # FPS depuis le moteur
             fps_str = ""
             stats = self._engine.get_stats(uid)
             if stats and stats.fps > 0:
                 fps_str = f"{stats.fps:.1f} fps"
 
-            if annotated is not None:
-                tile.update_frame(annotated, connected=connected, fps=fps_str)
-            else:
-                frame = self._cam_mgr.get_frame(uid)
-                tile.update_frame(frame, connected=connected, fps=fps_str)
+            annotated = annotated_copy.get(uid)
+            frame = annotated if annotated is not None else self._cam_mgr.get_frame(uid)
+            tile.update_frame(frame, fps=fps_str)
 
         if self._engine.is_running:
             self._refresh_cam_list()
@@ -681,10 +700,10 @@ class SurveillanceDashboard(tk.Toplevel):
         name = config.name if config else uid
         win = tk.Toplevel(self)
         win.title(f"Plein écran — {name}")
-        win.configure(bg="#000")
+        win.configure(bg=theme.BG_BASE)
         win.state("zoomed")
 
-        canvas = tk.Canvas(win, bg="#000", highlightthickness=0)
+        canvas = tk.Canvas(win, bg=theme.BG_BASE, highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True)
         canvas.bind("<Escape>", lambda _: win.destroy())
         canvas.bind("<Double-Button-1>", lambda _: win.destroy())
@@ -726,8 +745,8 @@ class SurveillanceDashboard(tk.Toplevel):
         tk.Label(
             win,
             text="Appuyez sur Échap ou double-cliquez pour fermer",
-            bg="#000",
-            fg="#555",
+            bg=theme.BG_BASE,
+            fg=theme.TEXT_SECONDARY,
             font=("Helvetica", 9),
         ).pack(side=tk.BOTTOM, pady=4)
 
@@ -774,7 +793,7 @@ class SurveillanceDashboard(tk.Toplevel):
         if self._api_server.is_running:
             self._api_server.stop()
             self._api_var.set("API: OFF")
-            self._api_btn.configure(bg="#555")
+            self._api_dot.configure(fg=theme.TEXT_SECONDARY)
             return
 
         if not self._api_server.start():
@@ -787,7 +806,7 @@ class SurveillanceDashboard(tk.Toplevel):
             return
 
         self._api_var.set(f"API: :{self._api_server.port}")
-        self._api_btn.configure(bg="#27ae60")
+        self._api_dot.configure(fg=theme.STATE_OK)
         self._afficher_cle_api()
 
     def _afficher_cle_api(self) -> None:
@@ -812,7 +831,7 @@ class SurveillanceDashboard(tk.Toplevel):
         tk.Label(
             fenetre,
             text=f"{self._api_server.url}/api/status",
-            fg="#555",
+            fg=theme.TEXT_SECONDARY,
             font=("Helvetica", 9),
         ).pack(pady=(6, 0))
 

@@ -19,6 +19,7 @@ from .storage.camera_repository import CameraRepository
 from .storage.encodings_repository import EncodingsRepository
 from .storage.event_repository import EventRepository
 from .storage.profile_repository import ProfileRepository
+from .theme import apply_theme
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,10 @@ def main() -> None:
     _verifier_opencv()
     context = build_context(settings)
 
-    root = ttk.Window(themename="solar")
+    # Un thème sombre standard d'abord : `Style.register_theme` est une méthode
+    # d'instance, il faut donc une fenêtre pour lui soumettre la palette maison.
+    root = ttk.Window(themename="darkly")
+    apply_theme(root)
     root.withdraw()
 
     from .ui.surveillance_dashboard import SurveillanceDashboard

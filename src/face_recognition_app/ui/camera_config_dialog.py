@@ -14,6 +14,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from .. import theme
 from ..services.camera_source import CameraConfig
 
 
@@ -62,14 +63,14 @@ class CameraConfigDialog(tk.Toplevel):
         pad = {"padx": 12, "pady": 6}
 
         # ── Titre interne
-        header = tk.Frame(self, bg="#2b2b2b")
+        header = tk.Frame(self, bg=theme.BG_SURFACE)
         header.pack(fill=tk.X)
         tk.Label(
             header,
             text="Ajouter / Modifier une caméra",
-            bg="#2b2b2b",
-            fg="white",
-            font=("Helvetica", 13, "bold"),
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_PRIMARY,
+            font=theme.FONT_TITLE,
             pady=10,
         ).pack()
 
@@ -116,7 +117,7 @@ class CameraConfigDialog(tk.Toplevel):
             fg="gray",
             wraplength=280,
             justify=tk.LEFT,
-            font=("Helvetica", 9),
+            font=theme.FONT_SMALL,
         ).grid(row=3, column=1, sticky=tk.W, padx=12, pady=(0, 6))
 
         # Résolution

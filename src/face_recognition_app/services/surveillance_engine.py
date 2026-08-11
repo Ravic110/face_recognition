@@ -26,6 +26,7 @@ import cv2
 import face_recognition
 import numpy as np
 
+from .. import theme
 from ..storage.config import FACE_RECOGNITION_THRESHOLD
 from ..storage.encodings_store import load_encodings_map
 from .camera_manager import CameraManager
@@ -123,6 +124,7 @@ class SurveillanceEngine:
         self._motion_required = True
         self._detection_model = "hog"
         self._analysis_interval = 0.5
+        self._target_persons: list[str] = []
 
         # Composants optionnels (injectés après construction)
         self._recorder = None  # VideoRecorder
@@ -151,6 +153,7 @@ class SurveillanceEngine:
         self._detection_model = profile.detection_model
         self._analysis_interval = profile.analysis_interval
         self._threshold = profile.recognition_threshold
+        self._target_persons = list(getattr(profile, "target_persons", []))
         # Mettre à jour les détecteurs de mouvement existants
         for det in self._motion_detectors.values():
             det._sensitivity = profile.motion_sensitivity
@@ -414,13 +417,15 @@ class SurveillanceEngine:
         if config and config.roi:
             off_x, off_y = config.roi[0], config.roi[1]
 
+        cibles = set(self._target_persons)
         for face in faces:
             top, right, bottom, left = face.location
             top += off_y
             bottom += off_y
             left += off_x
             right += off_x
-            color = (0, 200, 0) if face.is_known else (0, 0, 220)
+            # Même palette que l'interface : vert connu, rouge inconnu, violet suivi.
+            color = theme.face_box_bgr(is_known=face.is_known, is_target=face.name in cibles)
             cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
             label = f"{face.name} ({face.confidence:.0%})"
             cv2.rectangle(frame, (left, bottom - 22), (right, bottom), color, cv2.FILLED)
@@ -430,7 +435,7 @@ class SurveillanceEngine:
                 (left + 4, bottom - 6),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                (255, 255, 255),
+                theme.to_bgr(theme.TEXT_PRIMARY),
                 1,
             )
         return frame

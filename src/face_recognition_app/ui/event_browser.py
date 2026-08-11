@@ -19,6 +19,7 @@ from tkinter import messagebox, ttk
 
 from PIL import Image, ImageTk
 
+from .. import theme
 from ..storage.event_store import EventStore, StoredEvent
 
 
@@ -45,14 +46,18 @@ class EventBrowserApp(tk.Toplevel):
 
     def _build_ui(self) -> None:
         # Barre de filtres
-        filter_bar = tk.Frame(self, bg="#2b2b2b", padx=8, pady=6)
+        filter_bar = tk.Frame(self, bg=theme.BG_SURFACE, padx=8, pady=6)
         filter_bar.pack(fill=tk.X)
 
         tk.Label(
-            filter_bar, text="Historique", bg="#2b2b2b", fg="white", font=("Helvetica", 13, "bold")
+            filter_bar,
+            text="Historique",
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_PRIMARY,
+            font=theme.FONT_TITLE,
         ).pack(side=tk.LEFT, padx=6)
 
-        tk.Label(filter_bar, text="Caméra :", bg="#2b2b2b", fg="#aaa").pack(
+        tk.Label(filter_bar, text="Caméra :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
             side=tk.LEFT, padx=(12, 2)
         )
         self._cam_var = tk.StringVar(value="Toutes")
@@ -62,7 +67,7 @@ class EventBrowserApp(tk.Toplevel):
         self._cam_cb.pack(side=tk.LEFT)
         self._cam_cb.bind("<<ComboboxSelected>>", lambda _: self._load_events())
 
-        tk.Label(filter_bar, text="Personne :", bg="#2b2b2b", fg="#aaa").pack(
+        tk.Label(filter_bar, text="Personne :", bg=theme.BG_SURFACE, fg=theme.TEXT_SECONDARY).pack(
             side=tk.LEFT, padx=(10, 2)
         )
         self._person_var = tk.StringVar()
@@ -78,7 +83,11 @@ class EventBrowserApp(tk.Toplevel):
 
         self._count_var = tk.StringVar(value="")
         tk.Label(
-            filter_bar, textvariable=self._count_var, bg="#2b2b2b", fg="#aaa", font=("Helvetica", 9)
+            filter_bar,
+            textvariable=self._count_var,
+            bg=theme.BG_SURFACE,
+            fg=theme.TEXT_SECONDARY,
+            font=theme.FONT_SMALL,
         ).pack(side=tk.RIGHT, padx=10)
 
         # Corps : liste à gauche, détail à droite
@@ -105,9 +114,9 @@ class EventBrowserApp(tk.Toplevel):
         self._tree.bind("<<TreeviewSelect>>", self._on_select)
 
         # Couleurs alternées + connus/inconnus
-        self._tree.tag_configure("known", foreground="#2ecc71")
-        self._tree.tag_configure("unknown", foreground="#e74c3c")
-        self._tree.tag_configure("odd", background="#f9f9f9")
+        self._tree.tag_configure("known", foreground=theme.STATE_OK)
+        self._tree.tag_configure("unknown", foreground=theme.STATE_DANGER)
+        self._tree.tag_configure("odd", background=theme.BG_SURFACE)
 
         # ── Détail d'un événement
         right = tk.Frame(body, padx=10, pady=8)
@@ -117,7 +126,12 @@ class EventBrowserApp(tk.Toplevel):
 
         # Snapshot
         self._snap_label = tk.Label(
-            right, bg="#111", width=30, height=12, text="Aucun snapshot", fg="#555"
+            right,
+            bg=theme.BG_BASE,
+            width=30,
+            height=12,
+            text="Aucun snapshot",
+            fg=theme.TEXT_SECONDARY,
         )
         self._snap_label.pack(pady=8)
 
@@ -129,7 +143,7 @@ class EventBrowserApp(tk.Toplevel):
             info_lf,
             textvariable=self._detail_var,
             justify=tk.LEFT,
-            font=("Helvetica", 9),
+            font=theme.FONT_SMALL,
             wraplength=240,
         ).pack(anchor=tk.W, padx=6, pady=6)
 
@@ -209,12 +223,12 @@ class EventBrowserApp(tk.Toplevel):
                 pil = Image.open(BytesIO(img_data))
                 pil.thumbnail((320, 200))
                 photo = ImageTk.PhotoImage(pil)
-                self._snap_label.configure(image=photo, text="", bg="#111")
+                self._snap_label.configure(image=photo, text="", bg=theme.BG_BASE)
                 self._snap_label.image = photo
             except Exception:
-                self._snap_label.configure(image="", text="Snapshot invalide", bg="#111")
+                self._snap_label.configure(image="", text="Snapshot invalide", bg=theme.BG_BASE)
         else:
-            self._snap_label.configure(image="", text="Pas de snapshot", bg="#111")
+            self._snap_label.configure(image="", text="Pas de snapshot", bg=theme.BG_BASE)
 
         # Infos
         lines = [
@@ -245,7 +259,7 @@ class EventBrowserApp(tk.Toplevel):
         dlg.resizable(False, False)
         dlg.grab_set()
 
-        tk.Label(dlg, text="Supprimer les événements antérieurs à :", font=("Helvetica", 10)).pack(
+        tk.Label(dlg, text="Supprimer les événements antérieurs à :", font=theme.FONT_BODY).pack(
             padx=16, pady=(12, 4)
         )
 
