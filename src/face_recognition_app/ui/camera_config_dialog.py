@@ -161,9 +161,17 @@ class CameraConfigDialog(tk.Toplevel):
             )
 
         # Activée
+        # Effet miroir — coché d'office pour une webcam, décoché pour une IP.
+        self._mirror_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            form,
+            text="Effet miroir (recommandé pour une webcam)",
+            variable=self._mirror_var,
+        ).grid(row=7, column=1, sticky=tk.W, **pad)
+
         self._enabled_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(form, text="Caméra activée", variable=self._enabled_var).grid(
-            row=7, column=1, sticky=tk.W, **pad
+            row=8, column=1, sticky=tk.W, **pad
         )
 
         # Boutons
@@ -176,6 +184,7 @@ class CameraConfigDialog(tk.Toplevel):
 
     def _on_type_change(self) -> None:
         t = self._type_var.get()
+        self._mirror_var.set(t == "webcam")
         if t == "webcam":
             self._source_var.set("0")
             self._hint_var.set("Index de la caméra (0 = caméra par défaut, 1 = deuxième caméra…)")
@@ -201,6 +210,9 @@ class CameraConfigDialog(tk.Toplevel):
             self._roi_vars["w"].set(str(w))
             self._roi_vars["h"].set(str(h))
         self._on_type_change()
+        # _on_type_change réinitialise le miroir au défaut du type ; restaurer
+        # ensuite le choix réellement enregistré.
+        self._mirror_var.set(bool(config.mirror))
 
     # ── Validation ────────────────────────────────────────────────────────────
 
@@ -263,6 +275,7 @@ class CameraConfigDialog(tk.Toplevel):
             height=height,
             roi=roi,
             detection_model=self._model_var.get(),
+            mirror=self._mirror_var.get(),
             **({"uid": uid} if uid else {}),
         )
         self.destroy()

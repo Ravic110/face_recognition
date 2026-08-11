@@ -165,11 +165,23 @@ class CameraSource:
         return True
 
     def _read_raw(self) -> tuple[bool, np.ndarray | None]:
-        """Lit une frame. Retourne (succès, frame)."""
+        """
+        Lit une frame. Retourne (succès, frame).
+
+        Le retournement miroir est appliqué ici, à la source, et non à
+        l'affichage : reconnaissance, annotations, clips et instantanés portent
+        ainsi tous sur la même image que celle montrée à l'écran. Le corollaire
+        est que la ROI se définit dans le repère de l'image retournée — c'est
+        bien celui que l'utilisateur voit quand il la trace.
+        """
         if self._cap is None:
             return False, None
         ok, frame = self._cap.read()
-        return bool(ok), frame
+        if not ok or frame is None:
+            return False, None
+        if self.config.mirror:
+            frame = cv2.flip(frame, 1)
+        return True, frame
 
     def _release(self) -> None:
         if self._cap is not None:

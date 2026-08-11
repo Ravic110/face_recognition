@@ -33,6 +33,12 @@ class CameraConfig:
 
     detection_model: str = "hog"
 
+    # Retournement horizontal. `None` = décider selon le type de source : une
+    # webcam sert de miroir, on s'attend à s'y voir comme dans une glace ; une
+    # caméra IP de surveillance ne doit pas l'être, cela rendrait les textes de
+    # la scène illisibles. Résolu en booléen dès la construction.
+    mirror: bool | None = None
+
     def __post_init__(self) -> None:
         if self.source_type not in SOURCE_TYPES:
             raise ValueError(
@@ -45,6 +51,8 @@ class CameraConfig:
             )
         if self.roi is not None:
             self.roi = tuple(int(v) for v in self.roi)  # type: ignore[assignment]
+        if self.mirror is None:
+            self.mirror = self.source_type == "webcam"
 
     @property
     def is_ip(self) -> bool:
@@ -61,6 +69,7 @@ class CameraConfig:
             "height": self.height,
             "roi": list(self.roi) if self.roi else None,
             "detection_model": self.detection_model,
+            "mirror": self.mirror,
         }
 
     @classmethod
@@ -76,4 +85,6 @@ class CameraConfig:
             height=data.get("height", 480),
             roi=tuple(roi_raw) if roi_raw else None,
             detection_model=data.get("detection_model", "hog"),
+            # Absent des cameras.json antérieurs : laisser __post_init__ décider.
+            mirror=data.get("mirror"),
         )

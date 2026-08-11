@@ -176,3 +176,82 @@ def test_get_frame_retourne_une_copie():
         assert a is not b
     finally:
         src.stop()
+
+
+# ── Effet miroir ──────────────────────────────────────────────────────────────
+
+
+class CaptureFactice:
+    """Objet minimal imitant cv2.VideoCapture pour tester `_read_raw`."""
+
+    def __init__(self, frame):
+        self._frame = frame
+
+    def read(self):
+        return True, self._frame
+
+    def release(self):
+        pass
+
+
+class SourceAvecCapture(CameraSource):
+    """Source qui expose une capture factice, sans toucher a OpenCV."""
+
+    def __init__(self, config, frame):
+        super().__init__(config, policy=POLITIQUE_RAPIDE)
+        self._frame_test = frame
+
+    def _open_capture(self) -> bool:
+        self._cap = CaptureFactice(self._frame_test)
+        return True
+
+
+def _frame_asymetrique():
+    """Frame dont la colonne 0 differe de la derniere : le miroir se voit."""
+    f = np.zeros((2, 4, 3), dtype=np.uint8)
+    f[:, 0] = 255
+    return f
+
+
+def test_webcam_retourne_horizontalement_la_frame():
+    src = SourceAvecCapture(
+        CameraConfig(name="W", source_type="webcam", source=0), _frame_asymetrique()
+    )
+    src._open_capture()
+    ok, frame = src._read_raw()
+    assert ok
+    # La colonne blanche est passee de gauche a droite
+    assert frame[0, 0].tolist() == [0, 0, 0]
+    assert frame[0, -1].tolist() == [255, 255, 255]
+
+
+def test_camera_ip_ne_retourne_pas_la_frame():
+    src = SourceAvecCapture(
+        CameraConfig(name="I", source_type="ip", source="http://x"), _frame_asymetrique()
+    )
+    src._open_capture()
+    ok, frame = src._read_raw()
+    assert ok
+    assert frame[0, 0].tolist() == [255, 255, 255]
+
+
+def test_miroir_desactivable_sur_une_webcam():
+    src = SourceAvecCapture(
+        CameraConfig(name="W", source_type="webcam", source=0, mirror=False),
+        _frame_asymetrique(),
+    )
+    src._open_capture()
+    _, frame = src._read_raw()
+    assert frame[0, 0].tolist() == [255, 255, 255]
+
+
+def test_lecture_ratee_ne_tente_pas_de_retourner():
+    class CaptureMuette(CaptureFactice):
+        def read(self):
+            return False, None
+
+    src = SourceAvecCapture(CameraConfig(name="W", source_type="webcam", source=0), None)
+    src._cap = CaptureMuette(None)
+    ok, frame = src._read_raw()
+    assert ok is False
+    assert frame is None

@@ -65,3 +65,36 @@ def test_modele_de_detection_invalide_rejete():
 
 def test_is_ip_faux_pour_webcam():
     assert CameraConfig(name="X", source_type="webcam", source=0).is_ip is False
+
+
+# ── Effet miroir ──────────────────────────────────────────────────────────────
+
+
+def test_webcam_est_en_miroir_par_defaut():
+    """Une webcam sert de miroir : on s'attend a se voir comme dans une glace."""
+    assert CameraConfig(name="Salon", source_type="webcam", source=0).mirror is True
+
+
+def test_camera_ip_n_est_pas_en_miroir_par_defaut():
+    """Retourner une camera de surveillance rendrait la scene illisible."""
+    c = CameraConfig(name="Couloir", source_type="ip", source="http://x/video")
+    assert c.mirror is False
+
+
+def test_miroir_explicite_prime_sur_le_defaut():
+    assert CameraConfig(name="X", source_type="webcam", source=0, mirror=False).mirror is False
+    assert CameraConfig(name="Y", source_type="ip", source="http://x", mirror=True).mirror is True
+
+
+def test_miroir_persiste_dans_le_dict():
+    c = CameraConfig(name="X", source_type="webcam", source=0)
+    assert c.to_dict()["mirror"] is True
+    assert CameraConfig.from_dict(c.to_dict()).mirror is True
+
+
+def test_cameras_json_existant_recoit_le_defaut_par_type():
+    """Les entrees deja enregistrees n'ont pas la cle mirror."""
+    webcam = CameraConfig.from_dict({"name": "W", "source_type": "webcam", "source": 0})
+    ip = CameraConfig.from_dict({"name": "I", "source_type": "ip", "source": "http://x"})
+    assert webcam.mirror is True
+    assert ip.mirror is False
