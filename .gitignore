@@ -30,6 +30,8 @@ clips/
 temp/
 *.json
 *.db
+*.db-shm
+*.db-wal
 events.db
 profiles.json
 
